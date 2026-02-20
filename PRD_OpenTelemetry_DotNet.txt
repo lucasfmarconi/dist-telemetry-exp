@@ -1,0 +1,561 @@
+================================================================================
+PRODUCT REQUIREMENTS DOCUMENT
+OpenTelemetry Distributed Tracing Evaluation Platform — .NET + MQTT + Jaeger
+================================================================================
+
+# Overview
+
+This project is a hands-on evaluation platform for OpenTelemetry (OTel) distributed
+tracing in a polyglot, event-driven .NET ecosystem. It simulates a realistic
+industrial/IoT-style architecture where multiple independent services communicate
+over HTTP and MQTT, persist data in an embedded NoSQL store, and emit telemetry
+signals (traces) to a centralized observability backend.
+
+The platform solves a concrete engineering problem: understanding how OpenTelemetry
+behaves across heterogeneous communication protocols — specifically HTTP (synchronous,
+request/response) and MQTT (asynchronous, publish/subscribe) — within containerized
+.NET services. Trace context propagation across an async message broker is non-trivial
+and requires explicit instrumentation, making this a valuable real-world evaluation
+scenario.
+
+Target audience: software engineers and platform/DevOps engineers evaluating OTel
+adoption in .NET microservice or IoT gateway architectures. The value is twofold:
+it produces reusable instrumentation patterns (especially for MQTT), and it provides
+a complete, reproducible Docker-based lab environment for experimentation and
+demonstrations.
+
+--------------------------------------------------------------------------------
+
+# Core Features
+
+## 1. Machine Simulation Console App
+What it does: Continuously generates synthetic machine telemetry payloads (e.g.,
+sensor readings, status events) and publishes them to HiveMQ MQTT topics on a
+configurable interval.
+Why it's important: Provides a realistic, controllable data source that exercises
+MQTT publish instrumentation and forces the platform to handle async, fire-and-forget
+messaging patterns.
+How it works: A .NET Worker Service or hosted background loop connects to HiveMQ,
+injects W3C TraceContext headers into MQTT 5.0 User Properties on each published
+message, creates an OTel Activity (span) per publish, and exports it via OTLP to
+Jaeger.
+
+## 2. Console App Background Service (Orchestrator)
+What it does: Acts as the central processing hub. Subscribes to MQTT topics on
+HiveMQ, extracts trace context from incoming message User Properties, processes
+the payloads, and forwards results to the REST API over HTTP.
+Why it's important: This is the critical context-propagation bridge — it must
+correctly resume a distributed trace that started in the Machine Simulator, link
+it across the MQTT boundary, and continue that trace into the HTTP call to the API.
+This is the most technically interesting component for OTel evaluation purposes.
+How it works: A .NET Worker Service subscribes via MQTTnet (or HiveMQ SDK), extracts
+the traceparent/tracestate from MQTT User Properties using OTel's propagation API,
+creates a child Activity linked to the upstream trace, calls the API via HttpClient
+(auto-instrumented), and exports all spans via OTLP.
+
+## 3. REST API (.NET Web API)
+What it does: Receives processed data from the Orchestrator via HTTP, validates and
+persists records to LiteDB, and exposes endpoints for querying stored data.
+Why it's important: Provides the synchronous HTTP leg of the trace chain and
+exercises auto-instrumentation of ASP.NET Core request handling and LiteDB
+persistence (manual instrumentation).
+How it works: A minimal ASP.NET Core Web API with OTel auto-instrumentation for
+incoming HTTP requests. LiteDB operations are wrapped in manual Activity spans to
+provide visibility into database read/write latency. Exports spans via OTLP.
+
+## 4. LiteDB Persistence Layer
+What it does: Embedded NoSQL document store used by the API to persist machine
+telemetry records.
+Why it's important: Demonstrates manual OTel instrumentation for a data layer that
+has no native OTel support, which is a common real-world scenario.
+How it works: LiteDB operations (insert, query) are wrapped with ActivitySource
+spans, tagging relevant db.* semantic conventions (db.system, db.operation,
+db.statement) so they appear as child spans in Jaeger traces.
+
+## 5. OpenTelemetry Trace Pipeline
+What it does: All three .NET applications export spans via OTLP (gRPC or HTTP)
+directly to Jaeger's OTLP endpoint, forming end-to-end distributed traces visible
+in the Jaeger UI.
+Why it's important: This is the core evaluation artifact — the ability to see a
+single trace that starts in the Machine Simulator, crosses the MQTT broker, passes
+through the Orchestrator, and terminates in the API's database call.
+How it works: Each app configures OpenTelemetry SDK with an OtlpExporter pointing
+to the Jaeger all-in-one container. Resource attributes (service.name, service.version)
+are set per service to distinguish them in Jaeger.
+
+## 6. Docker Compose Infrastructure
+What it does: Orchestrates all services and infrastructure (HiveMQ, Jaeger, API,
+Orchestrator, Machine Simulator) as a single local environment.
+Why it's important: Ensures full reproducibility of the evaluation environment and
+mirrors realistic deployment topology.
+How it works: A single docker-compose.yml defines all services with proper networking,
+healthchecks, dependency ordering, and volume mounts for LiteDB persistence.
+
+--------------------------------------------------------------------------------
+
+# User Experience
+
+## User Personas
+
+Primary Persona — The Evaluating Engineer:
+A .NET backend or platform engineer investigating OTel adoption for a production
+system. They are comfortable with Docker, C#, and distributed systems concepts but
+have limited prior OTel experience. Their goal is to understand what works out of
+the box, what requires manual effort, and what the traces look like in practice.
+
+Secondary Persona — The Demo Presenter:
+A tech lead or architect who wants to demonstrate end-to-end observability across
+an event-driven .NET stack to stakeholders, using this platform as a live demo.
+
+## Key User Flows
+
+Flow 1 — Environment Startup:
+User runs `docker-compose up`. All services start, HiveMQ broker becomes available,
+Jaeger UI becomes accessible at localhost:16686, and the Machine Simulator begins
+publishing messages automatically. No manual steps required post-startup.
+
+Flow 2 — Trace Observation:
+User opens Jaeger UI, selects a service (e.g., "machine-simulator"), and finds
+recent traces. They drill into a trace and observe all spans across all three
+services in a single waterfall view — from MQTT publish through MQTT subscribe,
+HTTP call, API handler, to LiteDB insert. They can inspect span attributes,
+timing, and trace context propagation at each hop.
+
+Flow 3 — Data Verification:
+User optionally calls the API's GET endpoint to confirm that machine telemetry
+records have been persisted to LiteDB, verifying the full data path is functioning
+alongside the trace path.
+
+Flow 4 — Instrumentation Experimentation:
+User modifies span attributes, sampling rates, or adds new manual spans in the
+source code, rebuilds via `docker-compose up --build`, and observes the impact
+in Jaeger. This flow supports iterative learning.
+
+## UI/UX Considerations
+
+The primary UI is the Jaeger web interface (no custom frontend is built). The
+evaluation experience depends entirely on traces being legible and well-structured.
+This means service names must be descriptive, span names must follow OTel semantic
+conventions, and key attributes (MQTT topic, HTTP route, db operation) must be
+present. A README with annotated screenshots of expected traces should guide the
+user through interpreting results.
+
+================================================================================
+PRD — TECHNICAL IMPLEMENTATION
+================================================================================
+
+# Technical Architecture
+
+## System Components
+
+1. machine-simulator (.NET Console / Worker Service)
+   - Runtime: .NET 8
+   - Libraries: MQTTnet (v4), OpenTelemetry.SDK, OpenTelemetry.Exporter.OpenTelemetryProtocol
+   - Role: MQTT publisher, trace root producer
+   - OTel: Manual ActivitySource for publish spans, W3C context injection into
+     MQTT 5.0 User Properties
+
+2. orchestrator (.NET Console / Worker Service)
+   - Runtime: .NET 8
+   - Libraries: MQTTnet (v4), OpenTelemetry.SDK, OpenTelemetry.Instrumentation.Http,
+     OpenTelemetry.Exporter.OpenTelemetryProtocol
+   - Role: MQTT subscriber, HTTP client to API, trace context extractor/propagator
+   - OTel: Manual ActivitySource for subscribe spans with context extraction,
+     auto-instrumented HttpClient
+
+3. api (.NET ASP.NET Core Web API)
+   - Runtime: .NET 8
+   - Libraries: OpenTelemetry.Extensions.Hosting, OpenTelemetry.Instrumentation.AspNetCore,
+     OpenTelemetry.Instrumentation.Http, LiteDB, OpenTelemetry.Exporter.OpenTelemetryProtocol
+   - Role: REST API, LiteDB persistence
+   - OTel: Auto-instrumented ASP.NET Core pipeline, manual spans for LiteDB operations
+
+4. hivemq (MQTT Broker)
+   - Image: hivemq/hivemq-ce (Community Edition)
+   - Port: 1883 (MQTT), 8080 (Web UI)
+   - Role: Message broker for Machine Simulator → Orchestrator communication
+
+5. jaeger (Observability Backend)
+   - Image: jaegertracing/all-in-one (latest)
+   - Ports: 16686 (UI), 4317 (OTLP gRPC), 4318 (OTLP HTTP)
+   - Role: Trace collection, storage, and visualization
+   - Configuration: Accepts OTLP directly; no separate OTel Collector needed for MVP
+
+6. litedb (Embedded in API container)
+   - Mounted as a Docker volume for persistence across container restarts
+   - No separate container required
+
+## Data Models
+
+MachineReading (MQTT payload + API persistence model):
+  - MachineId: string
+  - Timestamp: DateTime (UTC)
+  - Metric: string (e.g., "temperature", "pressure", "rpm")
+  - Value: double
+  - Unit: string
+  - Status: string (e.g., "nominal", "warning", "fault")
+  - TraceId: string (stored for cross-reference, optional)
+
+MQTT Topic Structure:
+  - machines/{machineId}/telemetry  — primary data topic
+  - machines/{machineId}/status     — status/heartbeat topic (future)
+
+API Endpoints:
+  - POST /api/readings              — ingest a reading from Orchestrator
+  - GET  /api/readings              — list all readings (with optional filters)
+  - GET  /api/readings/{machineId}  — get readings for a specific machine
+  - GET  /health                    — healthcheck endpoint
+
+## OTel Instrumentation Specification
+
+Span naming conventions:
+  - Machine Simulator publish:   "mqtt.publish machines/{id}/telemetry"
+  - Orchestrator subscribe:      "mqtt.process machines/{id}/telemetry"
+  - Orchestrator HTTP call:      auto-named by HttpClient instrumentation
+  - API request handler:         auto-named by ASP.NET Core instrumentation
+  - LiteDB insert:               "litedb.insert MachineReadings"
+  - LiteDB query:                "litedb.find MachineReadings"
+
+Span attributes (key semantic conventions):
+  - messaging.system = "mqtt"
+  - messaging.destination = topic name
+  - messaging.operation = "publish" | "process"
+  - db.system = "litedb"
+  - db.operation = "insert" | "find"
+  - service.name = per-service resource attribute
+
+Trace context propagation across MQTT:
+  - Inject:  TextMapPropagator.Default.Inject() into MQTT 5.0 UserProperties
+             using a custom ITextMapSetter implementation
+  - Extract: TextMapPropagator.Default.Extract() on the subscriber side
+             using a custom ITextMapGetter implementation
+  - Activity.Start() with ActivityContext from extracted propagation context
+             as the parent, linked to the publisher's span
+
+## Infrastructure Requirements
+
+- Docker Engine 24+ and Docker Compose v2
+- Minimum 4GB RAM for all containers combined
+- Ports available on host: 1883, 8080, 8081, 4317, 4318, 16686, 5000
+- .NET 8 SDK (for local development/build outside Docker)
+- All build artifacts produced inside Dockerfile using multi-stage builds
+
+docker-compose.yml service dependency order:
+  hivemq → machine-simulator
+  hivemq → orchestrator
+  api    → orchestrator
+  (jaeger is independent, started first via depends_on in all app services)
+
+--------------------------------------------------------------------------------
+
+# Development Roadmap
+
+## Phase 1 — Infrastructure Foundation
+
+Build and validate the Docker Compose environment with all infrastructure services
+running and healthy before writing any application code.
+
+Deliverables:
+- docker-compose.yml with: jaeger all-in-one, hivemq community edition
+- Healthcheck configurations for both infrastructure services
+- Validation that Jaeger UI is reachable at localhost:16686
+- Validation that HiveMQ broker accepts MQTT connections on port 1883
+- HiveMQ configuration file (hivemq-config.xml) with anonymous access enabled
+  for local evaluation purposes
+- README section: infrastructure setup and verification steps
+
+## Phase 2 — REST API with LiteDB and OTel
+
+Build the API as a standalone service with full OTel instrumentation. This gives
+the first visible traces in Jaeger and establishes the instrumentation patterns
+for the other services.
+
+Deliverables:
+- ASP.NET Core Web API project (dotnet new webapi)
+- LiteDB integration: MachineReading model, repository class
+- Endpoints: POST /api/readings, GET /api/readings, GET /health
+- OTel setup: AddOpenTelemetry() with AspNetCore instrumentation + OTLP exporter
+- Manual ActivitySource for LiteDB operations with db.* semantic attributes
+- Dockerfile (multi-stage): build + runtime image
+- docker-compose service entry for api with volume mount for LiteDB file
+- Validation: POST a reading manually (curl/Postman), observe span in Jaeger
+  showing ASP.NET Core request span + LiteDB child span
+
+## Phase 3 — Machine Simulator with MQTT Publish Instrumentation
+
+Build the Machine Simulator as an isolated publisher. Validate that publish spans
+appear in Jaeger before connecting to the Orchestrator.
+
+Deliverables:
+- .NET Worker Service project for machine-simulator
+- MQTTnet client setup with HiveMQ connection configuration
+- Configurable data generation loop (interval via environment variable)
+- MachineReading payload serialization (System.Text.Json)
+- Manual OTel ActivitySource for MQTT publish spans with messaging.* attributes
+- W3C TraceContext injection into MQTT 5.0 User Properties
+  (custom ITextMapSetter over UserProperties list)
+- OTLP exporter configuration
+- Dockerfile (multi-stage)
+- docker-compose service entry for machine-simulator
+- Validation: simulator runs, publishes messages to HiveMQ, publish spans visible
+  in Jaeger under service "machine-simulator"
+
+## Phase 4 — Orchestrator with MQTT Subscribe and Context Propagation
+
+Build the Orchestrator, which is the most technically complex component. This phase
+completes the end-to-end trace chain.
+
+Deliverables:
+- .NET Worker Service project for orchestrator
+- MQTTnet subscriber setup, topic subscription on machines/+/telemetry
+- W3C TraceContext extraction from MQTT 5.0 User Properties
+  (custom ITextMapGetter over UserProperties list)
+- Activity creation with extracted parent context (ActivityContext linking)
+- Typed HttpClient to POST to the API with OpenTelemetry.Instrumentation.Http
+- OTel setup: AddOpenTelemetry() with Http instrumentation + OTLP exporter
+- Manual ActivitySource for subscribe span wrapping the full processing pipeline
+- Dockerfile (multi-stage)
+- docker-compose service entry with dependency on api and hivemq
+- Validation: full end-to-end trace visible in Jaeger — single trace spanning
+  machine-simulator publish span → orchestrator subscribe + HTTP spans →
+  api ASP.NET Core span → LiteDB span
+
+## Phase 5 — Hardening, Configuration, and Documentation
+
+Polish the platform for reliable use as an evaluation and demonstration environment.
+
+Deliverables:
+- Environment variable configuration for all services (MQTT host, topic prefix,
+  publish interval, API base URL, OTLP endpoint, service name/version)
+- docker-compose.override.yml example for local development with host-mounted source
+- Structured logging (Microsoft.Extensions.Logging) correlated with trace IDs
+  in all three applications
+- Graceful shutdown handling in Worker Services (CancellationToken propagation)
+- README: full setup guide, architecture diagram reference, Jaeger navigation
+  walkthrough with annotated expected trace screenshot descriptions
+- docker-compose.yml final review: resource limits, restart policies, named volumes
+
+## Phase 6 — Future Enhancements (Post-MVP)
+
+These items are explicitly out of scope for MVP and are captured for future iteration:
+
+- Add OpenTelemetry Collector as an intermediate pipeline stage between apps and
+  Jaeger (adds batching, retry, and backend-agnostic configuration)
+- Add metrics signal: runtime metrics (process.cpu, GC) and custom business metrics
+  (messages processed per minute, API error rate) via OTel Metrics API
+- Add logs signal: structured log export via OTLP using
+  OpenTelemetry.Exporter.OpenTelemetryProtocol for logs
+- Introduce a second MQTT topic (machines/{id}/status) for heartbeat simulation
+- Add a second machine simulator instance to demonstrate multi-service trace fan-out
+- Add Prometheus + Grafana for metrics visualization alongside Jaeger
+- Add OpenTelemetry Sampling configuration comparison (AlwaysOn vs
+  TraceIdRatioBasedSampler) as an evaluation exercise
+- Add a simple Blazor or React frontend dashboard to visualize LiteDB records,
+  providing a richer demo artifact
+
+--------------------------------------------------------------------------------
+
+# Logical Dependency Chain
+
+The following defines the strict build order based on functional dependencies.
+Each phase must be fully complete and validated before the next begins.
+
+Step 1 — Jaeger container (standalone, no dependencies)
+  Reason: All other components depend on a working OTLP endpoint. Having Jaeger
+  up first means any span emitted at any later step is immediately observable.
+  This provides instant feedback throughout all subsequent phases.
+
+Step 2 — HiveMQ container (standalone, no dependencies)
+  Reason: MQTT broker must exist before any MQTT client code is written or tested.
+  Can be stood up in parallel with Jaeger.
+
+Step 3 — REST API (depends on Jaeger for OTLP)
+  Reason: The API is the simplest OTel integration point (auto-instrumentation
+  dominates) and produces the first visible end-to-end span in Jaeger. Establishing
+  this quickly validates the full OTel export pipeline before tackling the harder
+  manual instrumentation in later components. It also gives the Orchestrator a
+  real HTTP target to call.
+
+Step 4 — Machine Simulator (depends on HiveMQ and Jaeger)
+  Reason: The publisher is simpler than the subscriber — it only needs to inject
+  context, not extract it. Building and validating the publish-side context injection
+  in isolation, before building the subscriber, de-risks the hardest part of the
+  project (MQTT context propagation) by breaking it into two separate, testable halves.
+
+Step 5 — Orchestrator (depends on Machine Simulator, API, HiveMQ, and Jaeger)
+  Reason: This is the last component because it requires all other pieces to be
+  working. It consumes from HiveMQ (needs simulator publishing), calls the API
+  (needs API running), and exports to Jaeger (needs OTLP endpoint). Only at this
+  step does the full end-to-end trace become observable.
+
+Step 6 — Hardening and Documentation (depends on all components working)
+  Reason: Configuration, logging correlation, and documentation can only be
+  finalized once the full data and trace flow is validated end-to-end.
+
+Atomic buildable increments:
+  - After Step 1+2: infrastructure is runnable with docker-compose up
+  - After Step 3:   first real trace visible in Jaeger (HTTP + LiteDB)
+  - After Step 4:   MQTT publish spans visible in Jaeger (simulator service)
+  - After Step 5:   full cross-service trace visible (all 3 services, 1 trace)
+  - After Step 6:   platform is evaluation-ready and documented
+
+--------------------------------------------------------------------------------
+
+# Risks and Mitigations
+
+## Risk 1 — MQTT Trace Context Propagation Complexity
+Description: MQTT is not natively supported by OTel auto-instrumentation. Manual
+injection and extraction of W3C TraceContext headers via MQTT 5.0 User Properties
+requires implementing ITextMapSetter and ITextMapGetter against the MQTTnet
+UserProperties collection. Incorrect implementation silently breaks the trace chain
+(traces appear as orphaned roots rather than linked spans).
+Mitigation: Implement and unit-test the propagation helper classes in isolation
+before integrating them into the Worker Services. Add a dedicated validation step
+in Phase 4 that explicitly checks the Jaeger UI for a connected trace (not two
+separate traces) before proceeding. Document the pattern thoroughly for reuse.
+
+## Risk 2 — HiveMQ MQTT 5.0 User Properties Support
+Description: Trace context propagation requires MQTT protocol version 5.0 for
+User Properties support. If MQTTnet client configuration defaults to MQTT 3.1.1,
+User Properties are unavailable and context propagation is impossible without a
+workaround (e.g., embedding context in the JSON payload).
+Mitigation: Explicitly configure MqttClientOptionsBuilder with
+.WithProtocolVersion(MqttProtocolVersion.V500) in both the simulator and orchestrator.
+Add an early validation check that logs the negotiated protocol version on connect.
+If MQTT 5.0 proves unreliable, the fallback is to embed a "traceparent" field in
+the JSON payload itself — less elegant but functionally equivalent for evaluation.
+
+## Risk 3 — LiteDB Instrumentation — No Native OTel Support
+Description: LiteDB has no OpenTelemetry instrumentation package. All spans must
+be created manually using ActivitySource, which adds development effort and risks
+incomplete or inconsistent span attribute coverage.
+Mitigation: Create a thin LiteDbRepository wrapper class that encapsulates all
+LiteDB operations and handles Activity creation uniformly. This keeps instrumentation
+code centralized and testable. Scope the manual instrumentation to insert and find
+operations only — sufficient for the evaluation without over-engineering.
+
+## Risk 4 — Docker Networking and Service Discovery
+Description: Multiple containers communicating over Docker bridge networking can
+fail due to startup ordering, DNS resolution timing, or port conflicts. This is
+especially risky for the Orchestrator which depends on both HiveMQ and the API
+being healthy before it subscribes and forwards data.
+Mitigation: Define explicit healthchecks for HiveMQ (TCP check on 1883) and the
+API (/health endpoint) in docker-compose.yml. Use depends_on with condition:
+service_healthy for the Orchestrator service. Use Docker internal service names
+(e.g., http://api:8080) for all inter-service communication.
+
+## Risk 5 — MVP Scope Creep
+Description: The evaluation context may tempt expansion into metrics, logs, sampling
+configuration, or a Collector pipeline before the core trace chain is validated.
+This risks an incomplete core deliverable.
+Mitigation: Strictly enforce the Phase 1-5 boundary. Metrics, logs, and the OTel
+Collector are explicitly documented in Phase 6 (Future Enhancements) and must not
+be introduced before Phase 5 hardening is complete. The MVP success criterion is
+singular: one end-to-end trace visible in Jaeger spanning all three services.
+
+## Risk 6 — Jaeger All-in-One Memory Usage in Docker
+Description: jaegertracing/all-in-one uses in-memory storage by default, which can
+grow unbounded during long evaluation sessions, causing the container to be OOM-killed.
+Mitigation: Set SPAN_STORAGE_TYPE=memory with --memory-max-traces=50000 (or lower)
+via environment variables in docker-compose.yml. For extended sessions, optionally
+configure Badger (embedded persistent storage) via environment variables — no
+additional containers required.
+
+--------------------------------------------------------------------------------
+
+# Appendix
+
+## Technology Reference
+
+OpenTelemetry .NET SDK:
+  - Package: OpenTelemetry (1.9+)
+  - Hosting integration: OpenTelemetry.Extensions.Hosting
+  - ASP.NET Core auto-instrumentation: OpenTelemetry.Instrumentation.AspNetCore
+  - HttpClient auto-instrumentation: OpenTelemetry.Instrumentation.Http
+  - OTLP exporter: OpenTelemetry.Exporter.OpenTelemetryProtocol
+  - W3C propagator: included in OpenTelemetry.SDK (TraceContextPropagator)
+  - ActivitySource: System.Diagnostics.ActivitySource (built into .NET runtime)
+
+MQTT:
+  - Broker: HiveMQ Community Edition (hivemq/hivemq-ce Docker image)
+  - Client library: MQTTnet 4.x (MQTTnet.Extensions.ManagedClient recommended
+    for auto-reconnect in Worker Services)
+  - Protocol version required: MQTT 5.0 (for User Properties / context propagation)
+
+Database:
+  - LiteDB 5.x — embedded NoSQL document database for .NET
+  - Storage: single .db file, mounted as Docker named volume
+  - Query API: LINQ-based collection queries, BsonDocument model
+
+Observability Backend:
+  - Jaeger all-in-one: jaegertracing/all-in-one:latest
+  - OTLP gRPC endpoint: localhost:4317 (host) / jaeger:4317 (Docker internal)
+  - OTLP HTTP endpoint: localhost:4318 (host) / jaeger:4318 (Docker internal)
+  - Jaeger UI: http://localhost:16686
+  - Storage: in-memory (default), Badger (optional persistent)
+
+## Architecture Diagram Reference
+
+As depicted in the provided architecture diagram, the data and trace flows are:
+
+  Machine Simulation → [MQTT publish] → MQTT Broker (HiveMQ)
+  MQTT Broker        → [MQTT subscribe] → Console App Background Service (Orchestrator)
+  Orchestrator       → [HTTP POST] → API
+  API                → [NoSQL write] → LiteDB
+
+  Trace export (OTLP) paths:
+  Console App Background Service → OTLP → Jaeger
+  API                            → OTLP → Jaeger
+  Machine Simulation             → OTLP → Jaeger
+
+All three OTLP paths converge in Jaeger where traces from all services are
+correlated by TraceId into a single distributed trace waterfall.
+
+## W3C TraceContext over MQTT — Implementation Pattern
+
+Inject (Machine Simulator, on publish):
+
+  var activity = activitySource.StartActivity("mqtt.publish {topic}",
+      ActivityKind.Producer);
+
+  var carrier = new List<MqttUserProperty>();
+  Propagators.DefaultTextMapPropagator.Inject(
+      new PropagationContext(activity.Context, Baggage.Current),
+      carrier,
+      (props, key, value) => props.Add(new MqttUserProperty(key, value)));
+
+  var message = new MqttApplicationMessageBuilder()
+      .WithTopic(topic)
+      .WithPayload(jsonPayload)
+      .WithUserProperties(carrier)
+      .Build();
+
+Extract (Orchestrator, on receive):
+
+  var parentContext = Propagators.DefaultTextMapPropagator.Extract(
+      default,
+      e.ApplicationMessage.UserProperties,
+      (props, key) => props
+          .Where(p => p.Name == key)
+          .Select(p => p.Value)
+          .ToArray());
+
+  using var activity = activitySource.StartActivity(
+      "mqtt.process {topic}",
+      ActivityKind.Consumer,
+      parentContext.ActivityContext);
+
+## Docker Compose Port Mapping Reference
+
+  Service            Host Port   Container Port   Protocol
+  -----------------  ----------  ---------------  --------
+  jaeger (UI)        16686       16686            HTTP
+  jaeger (OTLP gRPC) 4317        4317             gRPC
+  jaeger (OTLP HTTP) 4318        4318             HTTP
+  hivemq (MQTT)      1883        1883             TCP
+  hivemq (Web UI)    8080        8080             HTTP
+  api                5000        8080             HTTP
+
+================================================================================
+END OF DOCUMENT
+================================================================================
