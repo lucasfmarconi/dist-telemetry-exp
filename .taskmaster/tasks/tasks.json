@@ -9,7 +9,7 @@
         "testStrategy": "Run 'docker-compose up jaeger' and verify Jaeger UI accessible at http://localhost:16686. Check container logs for successful OTLP receiver startup. Verify ports 4317 and 4318 are listening using 'docker-compose ps' and 'netstat -an | grep 4317'.",
         "priority": "high",
         "dependencies": [],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -30,9 +30,10 @@
               1
             ],
             "details": "Add 'jaeger' service under 'services:' section. Set image to 'jaegertracing/all-in-one:latest'. Define container_name as 'jaeger' for consistent service discovery. This establishes the core observability backend for OTLP trace collection per PRD requirements.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run 'docker-compose config' and verify the jaeger service is properly defined in the parsed configuration output",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-20T18:48:04.385Z"
           },
           {
             "id": 3,
@@ -42,9 +43,10 @@
               2
             ],
             "details": "Add 'ports:' section to jaeger service with mappings: '16686:16686' for Jaeger UI access, '4317:4317' for OTLP gRPC receiver (used by .NET services), '4318:4318' for OTLP HTTP receiver. These ports align with the PRD's architecture diagram and service communication requirements.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "After running 'docker-compose up jaeger -d', verify port bindings using 'docker-compose ps' and 'netstat -an | grep -E \"16686|4317|4318\"' to confirm all three ports are listening on the host",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-20T18:48:16.690Z"
           },
           {
             "id": 4,
@@ -54,9 +56,10 @@
               2
             ],
             "details": "Add 'environment:' section to jaeger service with: SPAN_STORAGE_TYPE=memory (use in-memory storage per PRD), COLLECTOR_OTLP_ENABLED=true (enable OTLP receiver on ports 4317/4318), memory.max-traces=50000 (prevent OOM by limiting trace retention as specified in risk mitigation). These settings enable the OTLP collection pipeline and prevent unbounded memory growth during evaluation sessions.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run 'docker-compose up jaeger -d' and check container environment variables using 'docker inspect jaeger | grep -A 10 Env'. Verify Jaeger logs show OTLP receiver startup messages with 'docker-compose logs jaeger | grep -i otlp'",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-20T18:48:16.692Z"
           },
           {
             "id": 5,
@@ -67,12 +70,13 @@
               4
             ],
             "details": "Add 'healthcheck:' with test: 'wget --no-verbose --tries=1 --spider http://localhost:16686 || exit 1', interval: 30s, timeout: 5s, retries: 3. Set 'restart: unless-stopped' to ensure Jaeger survives Docker daemon restarts. Add 'networks: [otel-network]' and define 'networks: otel-network: driver: bridge' at top level. This ensures Jaeger is reliable and accessible to other services (api, orchestrator, machine-simulator) that will be added in future tasks.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run 'docker-compose up jaeger' and monitor healthcheck status using 'docker-compose ps' - wait for 'healthy' status (up to 90s). Access Jaeger UI at http://localhost:16686 to verify web interface loads. Verify network creation with 'docker network ls | grep otel-network' and confirm Jaeger is attached with 'docker network inspect otel-network'",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-02-20T18:48:45.520Z"
           }
         ],
-        "updatedAt": "2026-02-20T18:38:57.746Z"
+        "updatedAt": "2026-02-20T18:48:45.520Z"
       },
       {
         "id": "2",
@@ -389,9 +393,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-02-20T18:38:57.746Z",
+      "lastModified": "2026-02-20T18:48:45.520Z",
       "taskCount": 25,
-      "completedCount": 0,
+      "completedCount": 1,
       "tags": [
         "master"
       ]
