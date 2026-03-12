@@ -19,6 +19,23 @@ services:
     networks:
       - otel-network
 
+  hivemq:
+    image: hivemq/hivemq4:4.29.0
+    container_name: hivemq
+    ports:
+      - "1883:1883"
+      - "8083:8080"
+    volumes:
+      - ./config/hivemq:/opt/hivemq/conf
+    healthcheck:
+      test: ["CMD-SHELL", "timeout 1 bash -c '</dev/tcp/localhost/1883' || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - otel-network
+
 networks:
   otel-network:
     driver: bridge

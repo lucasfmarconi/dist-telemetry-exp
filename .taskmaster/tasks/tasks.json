@@ -86,8 +86,73 @@
         "testStrategy": "Start HiveMQ with 'docker-compose up hivemq'. Verify container healthy status. Test MQTT connection using MQTTBox or mosquitto_pub client to localhost:1883. Check HiveMQ Web UI at http://localhost:8080 shows broker running with MQTT 5.0 enabled. Verify config file properly mounted.",
         "priority": "high",
         "dependencies": [],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create config/hivemq directory structure",
+            "description": "Create the ./config/hivemq directory to hold HiveMQ configuration files that will be mounted into the container",
+            "dependencies": [],
+            "details": "Create the directory structure ./config/hivemq/ in the project root. This directory will be mounted as a volume to /opt/hivemq/conf in the HiveMQ container. The directory needs to exist before docker-compose can mount it as a volume.",
+            "status": "done",
+            "testStrategy": "Verify directory exists at ./config/hivemq using 'ls -la config/hivemq'. Ensure proper permissions are set for Docker to mount the directory.",
+            "updatedAt": "2026-02-20T19:00:42.950Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Create hivemq-config.xml configuration file",
+            "description": "Create the HiveMQ configuration file enabling anonymous authentication and MQTT 5.0 protocol support",
+            "dependencies": [
+              1
+            ],
+            "details": "Create ./config/hivemq/hivemq-config.xml file with proper XML structure. Configure anonymous authentication by disabling authentication requirement. Enable MQTT 5.0 protocol support. Set appropriate listeners for MQTT protocol on port 1883. Include typical HiveMQ CE configuration elements like persistence settings and cluster configuration.",
+            "status": "done",
+            "testStrategy": "Validate XML syntax using xmllint or similar tool. Review configuration to ensure anonymous authentication is enabled and MQTT 5.0 support is configured. Verify file will be properly mounted when HiveMQ container starts.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-20T19:00:56.202Z"
+          },
+          {
+            "id": 3,
+            "title": "Add HiveMQ service definition to docker-compose.yml",
+            "description": "Add the HiveMQ service configuration to docker-compose.yml with image, ports, volumes, and network settings",
+            "dependencies": [
+              2
+            ],
+            "details": "Add new 'hivemq' service to docker-compose.yml services section. Use image 'hivemq/hivemq-ce:latest'. Configure ports mapping: '1883:1883' for MQTT protocol and '8080:8080' for HiveMQ Web UI. Mount volume './config/hivemq:/opt/hivemq/conf' for configuration files. Set container_name to 'hivemq' for easier reference. Attach to 'otel-network' network to enable communication with other services like Jaeger and the API.",
+            "status": "done",
+            "testStrategy": "Validate docker-compose.yml syntax using 'docker-compose config'. Verify volume path is correctly specified and will mount the hivemq-config.xml file. Check that ports don't conflict with existing services in docker-compose.yml (Jaeger uses 16686, 4317, 4318).",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-20T19:01:12.921Z"
+          },
+          {
+            "id": 4,
+            "title": "Add healthcheck configuration to HiveMQ service",
+            "description": "Configure Docker healthcheck for HiveMQ service using TCP socket check on MQTT port 1883",
+            "dependencies": [
+              3
+            ],
+            "details": "Add healthcheck section to the hivemq service in docker-compose.yml. Use TCP socket check on port 1883 as the test command: test: ['CMD-SHELL', 'timeout 1 bash -c \"</dev/tcp/localhost/1883\"' || exit 1]. Set interval: 10s, timeout: 5s, retries: 5. This ensures the MQTT broker is accepting connections before dependent services start. Add restart policy: unless-stopped to match the pattern used by the Jaeger service.",
+            "status": "done",
+            "testStrategy": "Start HiveMQ service with 'docker-compose up -d hivemq'. Monitor healthcheck status using 'docker-compose ps' and verify status transitions from 'starting' to 'healthy'. Check logs with 'docker-compose logs hivemq' for any healthcheck failures. Verify the healthcheck interval and retry settings work as configured.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-20T19:01:12.923Z"
+          },
+          {
+            "id": 5,
+            "title": "Verify HiveMQ service integration and connectivity",
+            "description": "Test the complete HiveMQ service deployment including container health, MQTT connectivity, and Web UI access",
+            "dependencies": [
+              4
+            ],
+            "details": "Start the HiveMQ service using 'docker-compose up hivemq' and verify it reaches healthy status. Test MQTT connection using an MQTT client tool (mosquitto_pub/mosquitto_sub or MQTT Explorer) connecting to localhost:1883. Verify anonymous connections are accepted. Access HiveMQ Web UI at http://localhost:8080 and confirm the broker shows as running with MQTT 5.0 enabled. Check that hivemq-config.xml was properly mounted by inspecting the container filesystem or checking container logs for configuration loading messages.\n<info added on 2026-03-12T17:05:44.700Z>\nI'll analyze the codebase to understand the current HiveMQ configuration and then generate the appropriate update text.Successfully resolved HiveMQ Web UI accessibility issue. Root cause analysis revealed three problems: (1) HiveMQ 4.48.0 (latest) has ARM64 incompatibility due to Kryo deserialization bug causing container crashes - resolved by pinning to stable version 4.29.0 in docker-compose.yml:23; (2) config/hivemq/config.xml was missing Control Center listener configuration - added <control-center><listeners><http> block at lines 11-18 with port 8080 and bind-address 0.0.0.0; (3) host port 8080 was already occupied so mapped container port 8080 to host port 8083 in docker-compose.yml:27. HiveMQ Control Center now fully accessible at http://localhost:8083 using default credentials (admin/hivemq). Verified broker running with MQTT 5.0 enabled and anonymous connections functioning on port 1883.\n</info added on 2026-03-12T17:05:44.700Z>",
+            "status": "done",
+            "testStrategy": "Execute: 'docker-compose up -d hivemq && docker-compose ps' to verify healthy status. Use mosquitto_pub to publish test message: 'mosquitto_pub -h localhost -p 1883 -t test/topic -m \"hello\"'. Use mosquitto_sub to verify reception: 'mosquitto_sub -h localhost -p 1883 -t test/topic'. Access http://localhost:8080 in browser and verify Web UI loads. Check mounted config: 'docker exec hivemq cat /opt/hivemq/conf/hivemq-config.xml'.",
+            "parentId": "undefined",
+            "updatedAt": "2026-02-20T19:02:53.624Z"
+          }
+        ],
+        "updatedAt": "2026-02-20T19:02:53.624Z"
       },
       {
         "id": "3",
@@ -99,8 +164,73 @@
         "dependencies": [
           "1"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "in-progress",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create src/TelemetryApi directory structure",
+            "description": "Create the source directory hierarchy for the TelemetryApi project in the project root",
+            "dependencies": [],
+            "details": "Execute 'mkdir -p src/TelemetryApi' from the project root (/Users/lucasm/dev/dist-telemetry-exp) to create the nested directory structure that will contain the Web API project files. Verify the directory is created successfully.",
+            "status": "done",
+            "testStrategy": "Verify directory exists with 'ls -la src/TelemetryApi' and confirm successful directory creation",
+            "updatedAt": "2026-03-12T17:09:07.227Z",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Initialize .NET 8 Web API project with minimal APIs",
+            "description": "Run dotnet new webapi template to scaffold the ASP.NET Core Web API project with .NET 8 and minimal API configuration",
+            "dependencies": [
+              1
+            ],
+            "details": "Navigate to src/TelemetryApi directory and execute 'dotnet new webapi -n TelemetryApi -f net8.0 --use-minimal-apis' to create the project. This generates TelemetryApi.csproj, Program.cs with minimal API setup, appsettings.json, and default WeatherForecast endpoint. The --use-minimal-apis flag ensures modern minimal API pattern instead of controller-based routing.",
+            "status": "done",
+            "testStrategy": "Verify TelemetryApi.csproj file exists, check Program.cs contains minimal API configuration, run 'dotnet build' to ensure project compiles successfully",
+            "parentId": "undefined",
+            "updatedAt": "2026-03-12T17:10:00.933Z"
+          },
+          {
+            "id": 3,
+            "title": "Add OpenTelemetry NuGet package dependencies",
+            "description": "Install all required OpenTelemetry instrumentation and exporter packages for distributed tracing support",
+            "dependencies": [
+              2
+            ],
+            "details": "Navigate to src/TelemetryApi and execute the following dotnet add package commands: 'dotnet add package OpenTelemetry.Extensions.Hosting --version 1.9.0', 'dotnet add package OpenTelemetry.Instrumentation.AspNetCore --version 1.9.0', 'dotnet add package OpenTelemetry.Instrumentation.Http --version 1.9.0', 'dotnet add package OpenTelemetry.Exporter.OpenTelemetryProtocol --version 1.9.0'. These packages enable automatic instrumentation for ASP.NET Core requests, outgoing HTTP calls, and OTLP export to Jaeger.",
+            "status": "pending",
+            "testStrategy": "Run 'dotnet list package' to verify all OpenTelemetry packages are installed with correct versions (1.9.0+), execute 'dotnet restore' to ensure no dependency conflicts",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Add LiteDB package dependency",
+            "description": "Install LiteDB embedded NoSQL database package for local data persistence",
+            "dependencies": [
+              2
+            ],
+            "details": "Navigate to src/TelemetryApi and execute 'dotnet add package LiteDB --version 5.0.20' to add the LiteDB NuGet package. LiteDB will be used for storing telemetry data locally in the API service as a lightweight embedded database solution.",
+            "status": "done",
+            "testStrategy": "Run 'dotnet list package' to confirm LiteDB 5.0.20+ is installed, verify no version conflicts with 'dotnet restore'",
+            "parentId": "undefined",
+            "updatedAt": "2026-03-12T17:11:44.257Z"
+          },
+          {
+            "id": 5,
+            "title": "Configure project file for Docker and nullable types",
+            "description": "Update TelemetryApi.csproj with Docker support, nullable reference types, and verify target framework configuration",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Edit src/TelemetryApi/TelemetryApi.csproj to add: <EnableSdkContainerSupport>true</EnableSdkContainerSupport> inside a PropertyGroup to enable built-in .NET 8 container build support, <Nullable>enable</Nullable> to enable nullable reference types for better null safety. Verify <TargetFramework>net8.0</TargetFramework> is present (should be set by template). These configurations ensure Docker optimization and modern C# null safety features.",
+            "status": "done",
+            "testStrategy": "Run 'dotnet build src/TelemetryApi' to verify project builds successfully with all packages and configurations. Execute 'dotnet run --project src/TelemetryApi' and test the default WeatherForecast endpoint responds at http://localhost:5000 or http://localhost:5001. Verify nullable warnings appear for any null reference issues.",
+            "parentId": "undefined",
+            "updatedAt": "2026-03-12T17:12:47.704Z"
+          }
+        ],
+        "updatedAt": "2026-03-12T17:12:47.704Z"
       },
       {
         "id": "4",
@@ -113,7 +243,67 @@
           "3"
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Models/MachineReading.cs domain model class",
+            "description": "Define the MachineReading data model class with all required properties for machine telemetry data as specified in the PRD",
+            "dependencies": [],
+            "details": "Create src/TelemetryApi/Models/MachineReading.cs file. Define public class MachineReading with properties: MachineId (string, required, represents the unique machine identifier e.g., 'machine-001'), Timestamp (DateTime, required, UTC timestamp of reading), Metric (string, required, metric type e.g., 'temperature', 'pressure', 'rpm'), Value (double, required, numeric measurement value), Unit (string, required, measurement unit e.g., 'celsius', 'psi', 'rpm'), Status (string, required, operational status e.g., 'nominal', 'warning', 'fault'), TraceId (string?, optional, W3C trace ID for cross-reference with Jaeger traces). Enable nullable reference types. Add [Required] data annotations where appropriate for API validation. Consider adding an Id property (ObjectId or Guid) as primary key for LiteDB.",
+            "status": "pending",
+            "testStrategy": "Verify the class compiles successfully with 'dotnet build src/TelemetryApi'. Create a simple unit test instantiating MachineReading with valid data and serializing to JSON using System.Text.Json to verify serialization works correctly. Validate that required properties enforce non-null constraints.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Create static ActivitySource for LiteDB instrumentation",
+            "description": "Initialize the OpenTelemetry ActivitySource for manual LiteDB operation tracing with proper naming convention",
+            "dependencies": [
+              1
+            ],
+            "details": "Create src/TelemetryApi/Telemetry/ActivitySources.cs file. Define public static class ActivitySources with a public static readonly ActivitySource property named 'LiteDb' initialized with new ActivitySource('TelemetryApi.LiteDB', '1.0.0'). This follows OpenTelemetry naming conventions (namespace.component format). The ActivitySource will be used to create manual spans wrapping LiteDB operations in the repository. Ensure the activity source name matches the name that will be registered in the OpenTelemetry tracing configuration in Program.cs (to be done in Task 5). The version should match the API service version for consistency in trace metadata.",
+            "status": "pending",
+            "testStrategy": "Verify compilation with 'dotnet build'. Write a unit test that verifies ActivitySources.LiteDb is not null and has the correct Name property ('TelemetryApi.LiteDB'). Verify no exceptions are thrown when creating an Activity: using (var activity = ActivitySources.LiteDb.StartActivity('test')) { ... }",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Implement LiteDatabase configuration and initialization",
+            "description": "Create Data/LiteDbRepository.cs with LiteDatabase initialization, connection string configuration, and IDisposable implementation",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Create src/TelemetryApi/Data/LiteDbRepository.cs file. Define public class LiteDbRepository implementing IDisposable. Add constructor accepting IConfiguration parameter to read connection string. Read LiteDB connection string from configuration with key 'LiteDb:ConnectionString' and fallback default './data/telemetry.db'. Create private readonly LiteDatabase _database field initialized in constructor with the connection string. Ensure the data directory exists (create if missing using Directory.CreateDirectory). Get ILiteCollection<MachineReading> using _database.GetCollection<MachineReading>('MachineReadings'). Implement Dispose() method to call _database?.Dispose(). Add proper null checks and exception handling for database initialization failures. Consider making this class a singleton service registered in DI container.",
+            "status": "pending",
+            "testStrategy": "Create a unit test with a temporary test database file path. Verify LiteDbRepository initializes without exceptions. Verify the database file is created at the specified path. Verify Dispose() can be called multiple times safely. Test with missing configuration fallback to default path. Verify exception handling for invalid paths or permission issues.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Implement InsertReading method with OTel manual instrumentation",
+            "description": "Create InsertReading repository method with Activity span wrapping the LiteDB insert operation and proper semantic conventions",
+            "dependencies": [
+              3
+            ],
+            "details": "In LiteDbRepository class, implement public method: Task<BsonValue> InsertReading(MachineReading reading). Create Activity using ActivitySources.LiteDb.StartActivity with name 'litedb.insert MachineReadings' and ActivityKind.Internal. Add span attributes following OpenTelemetry semantic conventions: SetTag('db.system', 'litedb'), SetTag('db.operation', 'insert'), SetTag('db.name', 'telemetry'), SetTag('db.litedb.collection', 'MachineReadings'). Within the Activity scope, call _collection.Insert(reading) and capture the returned BsonValue (document ID). Handle exceptions by setting activity.SetStatus(ActivityStatusCode.Error, exception.Message) before rethrowing. Return the document ID. Ensure Activity is disposed properly (use using statement or try-finally). Set activity tags before the database call for accurate timing.",
+            "status": "pending",
+            "testStrategy": "Write unit test that inserts a MachineReading and verifies it returns a valid BsonValue ID. Use TestActivityListener or ActivityListener to capture the created activity and verify: activity name is 'litedb.insert MachineReadings', ActivityKind is Internal, all required tags are present (db.system, db.operation, db.name, db.litedb.collection), activity duration > 0. Verify the reading is actually persisted by querying LiteDB. Test error handling by forcing an exception (e.g., inserting null) and verify Activity.Status is set to Error.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Implement FindReadings method with OTel manual instrumentation",
+            "description": "Create FindReadings repository query method with Activity span wrapping the LiteDB find operation and filtering support",
+            "dependencies": [
+              3
+            ],
+            "details": "In LiteDbRepository class, implement public method: Task<IEnumerable<MachineReading>> FindReadings(string? machineId = null, DateTime? startDate = null, DateTime? endDate = null). Create Activity using ActivitySources.LiteDb.StartActivity with name 'litedb.find MachineReadings' and ActivityKind.Internal. Add span attributes: SetTag('db.system', 'litedb'), SetTag('db.operation', 'find'), SetTag('db.name', 'telemetry'), SetTag('db.litedb.collection', 'MachineReadings'). Build LiteDB query using _collection.Query(). Apply filters: if machineId is not null, add .Where(x => x.MachineId == machineId). If startDate is not null, add .Where(x => x.Timestamp >= startDate). If endDate is not null, add .Where(x => x.Timestamp <= endDate). Call .ToList() to execute query. Add tag 'db.litedb.filter.count' with number of active filters. Handle exceptions with activity.SetStatus(ActivityStatusCode.Error). Return the results as IEnumerable<MachineReading>. Wrap in Task.FromResult for async signature consistency.",
+            "status": "pending",
+            "testStrategy": "Write unit tests: (1) Insert multiple MachineReading records with different MachineIds and Timestamps. (2) Test FindReadings() with no filters returns all records. (3) Test FindReadings(machineId: 'machine-001') returns only records for that machine. (4) Test FindReadings with startDate/endDate range returns only records in that time window. (5) Use TestActivityListener to verify activity name 'litedb.find MachineReadings', verify all db.* tags present, verify db.litedb.filter.count tag has correct value based on applied filters. (6) Test exception handling and Activity.Status on query errors. Verify thread safety by running concurrent FindReadings calls.",
+            "parentId": "undefined"
+          }
+        ]
       },
       {
         "id": "5",
@@ -126,7 +316,64 @@
           "4"
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Implement minimal API endpoints for machine readings CRUD operations",
+            "description": "Create POST and GET endpoints using minimal API pattern in Program.cs for machine reading ingestion and retrieval",
+            "dependencies": [],
+            "details": "In src/TelemetryApi/Program.cs, after WebApplicationBuilder creation, add minimal API endpoints. Implement 'app.MapPost(\"/api/readings\", async (MachineReading reading, LiteDbRepository repo) => { var id = await repo.InsertReading(reading); return Results.Created($\"/api/readings/{reading.MachineId}\", new { id, reading }); })'. Implement 'app.MapGet(\"/api/readings\", async ([FromQuery] string? machineId, [FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate, LiteDbRepository repo) => { var readings = await repo.FindReadings(machineId, startDate, endDate); return Results.Ok(readings); })'. Implement 'app.MapGet(\"/api/readings/{machineId}\", async (string machineId, LiteDbRepository repo) => { var readings = await repo.FindReadings(machineId); return readings.Any() ? Results.Ok(readings) : Results.NotFound(); })'. Add appropriate using statements for Microsoft.AspNetCore.Mvc (for [FromQuery]). Ensure JSON serialization configured with System.Text.Json with camelCase property naming.",
+            "status": "pending",
+            "testStrategy": "Use curl to test: 'curl -X POST http://localhost:5000/api/readings -H \"Content-Type: application/json\" -d '{\"machineId\":\"machine-001\",\"timestamp\":\"2026-02-20T10:00:00Z\",\"metric\":\"temperature\",\"value\":72.5,\"unit\":\"celsius\",\"status\":\"nominal\"}' and verify 201 Created response with Location header. Call 'curl http://localhost:5000/api/readings' to verify data returned. Test query filters with 'curl \"http://localhost:5000/api/readings?machineId=machine-001\"'. Test 'curl http://localhost:5000/api/readings/machine-001' returns filtered results.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Implement health check endpoint",
+            "description": "Add GET /health endpoint returning 200 OK for Docker healthcheck probes and service monitoring",
+            "dependencies": [],
+            "details": "In src/TelemetryApi/Program.cs, add 'app.MapGet(\"/health\", () => Results.Ok(new { status = \"healthy\", timestamp = DateTime.UtcNow, service = \"telemetry-api\", version = \"1.0.0\" }))' before app.Run(). This endpoint will be used by Docker Compose healthcheck configuration. The response includes service metadata for debugging. Ensure the endpoint is accessible without authentication and responds quickly (<100ms) as it will be called frequently by Docker.",
+            "status": "pending",
+            "testStrategy": "Start the API and call 'curl http://localhost:5000/health'. Verify 200 OK response with JSON body containing status: 'healthy'. Test response time using 'curl -w \"@curl-format.txt\" http://localhost:5000/health' to ensure <100ms. Verify endpoint works before database initialization completes (should not depend on LiteDB being ready).",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Register LiteDbRepository in dependency injection container",
+            "description": "Configure LiteDbRepository as a singleton service in the DI container for injection into endpoint handlers",
+            "dependencies": [],
+            "details": "In src/TelemetryApi/Program.cs, after 'var builder = WebApplication.CreateBuilder(args);', add 'builder.Services.AddSingleton<LiteDbRepository>();'. This registers the repository as a singleton (single instance shared across all requests) which is appropriate for LiteDB's embedded database architecture. Ensure IConfiguration is available for injection (default in .NET 8 Web API). The singleton lifetime ensures the LiteDatabase connection is reused and properly managed through the application lifecycle. Add using statement for TelemetryApi.Data namespace.",
+            "status": "pending",
+            "testStrategy": "Verify application builds with 'dotnet build src/TelemetryApi'. Run the application and check startup logs for successful LiteDbRepository initialization. Test that endpoints can successfully inject the repository by calling POST /api/readings and verifying data persistence. Check that only one LiteDatabase file is created in ./data/telemetry.db (confirming singleton behavior). Verify repository Dispose() is called on application shutdown by checking logs or debugging.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Configure OpenTelemetry tracing with ASP.NET Core and HTTP instrumentation",
+            "description": "Set up OpenTelemetry SDK with auto-instrumentation for ASP.NET Core requests and outgoing HTTP calls, including OTLP exporter configuration",
+            "dependencies": [
+              3
+            ],
+            "details": "In src/TelemetryApi/Program.cs, after service registrations and before 'var app = builder.Build();', add OpenTelemetry configuration: 'builder.Services.AddOpenTelemetry().WithTracing(tracerProvider => { tracerProvider.AddSource(\"TelemetryApi.LiteDB\").SetResourceBuilder(ResourceBuilder.CreateDefault().AddService(\"telemetry-api\", serviceVersion: \"1.0.0\")).AddAspNetCoreInstrumentation(options => { options.RecordException = true; }).AddHttpClientInstrumentation().AddOtlpExporter(options => { options.Endpoint = new Uri(builder.Configuration[\"OTEL_EXPORTER_OTLP_ENDPOINT\"] ?? \"http://jaeger:4317\"); options.Protocol = OtlpExportProtocol.Grpc; }).AddConsoleExporter(); });'. Add using statements: OpenTelemetry, OpenTelemetry.Trace, OpenTelemetry.Resources, OpenTelemetry.Exporter. This configures: (1) ASP.NET Core auto-instrumentation for all HTTP requests, (2) HTTP client instrumentation for outgoing calls, (3) Registration of custom LiteDB ActivitySource, (4) Resource attributes with service name and version, (5) OTLP exporter to Jaeger, (6) Console exporter for local debugging. Note dependency on subtask 3 to ensure repository is registered before ActivitySource registration.",
+            "status": "pending",
+            "testStrategy": "Start the API service with 'dotnet run --project src/TelemetryApi'. Check console output for OpenTelemetry initialization logs and OTLP exporter connection. Make a POST request to /api/readings and verify console exporter outputs span information. Check Jaeger UI at http://localhost:16686, select 'telemetry-api' service from dropdown, and verify traces appear showing ASP.NET Core request span as root with LiteDB child span. Validate span attributes include: http.method, http.url, http.status_code for HTTP spans; db.system, db.operation, db.name for LiteDB spans. Verify service.name and service.version appear in Resource attributes.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Configure Kestrel URLs and validate complete API integration",
+            "description": "Set Kestrel to listen on port 8080 (for Docker) and validate end-to-end functionality of all endpoints with OpenTelemetry tracing",
+            "dependencies": [
+              1,
+              2,
+              4
+            ],
+            "details": "In src/TelemetryApi/Program.cs, before 'builder.Build()', add 'builder.WebHost.ConfigureKestrel(options => { options.ListenAnyIP(8080); });' to ensure the API listens on port 8080 inside Docker container (mapped to host port 5000 in docker-compose.yml). For local development, also support environment variable override with 'builder.WebHost.UseUrls(builder.Configuration[\"ASPNETCORE_URLS\"] ?? \"http://+:8080\");'. This ensures the API works both in Docker (port 8080) and local development (configurable). Perform integration validation: (1) Build and run the API, (2) POST multiple MachineReading payloads with different machineIds, (3) Verify 201 Created responses with Location headers, (4) GET all readings and verify count matches, (5) GET filtered by machineId and verify filtering works, (6) GET by date range and verify date filtering, (7) Open Jaeger UI and locate a complete trace showing: ASP.NET Core span (POST /api/readings) → LiteDB span (litedb.insert MachineReadings), (8) Verify all span attributes are present and accurate, (9) Verify health endpoint responds quickly and doesn't create spans (or creates minimal spans).",
+            "status": "pending",
+            "testStrategy": "Run 'dotnet run --project src/TelemetryApi' and verify startup logs show 'Now listening on: http://[::]:8080'. Execute comprehensive test suite: (1) 'curl -X POST http://localhost:5000/api/readings -H \"Content-Type: application/json\" -d '{\"machineId\":\"machine-001\",\"timestamp\":\"2026-02-20T10:00:00Z\",\"metric\":\"temperature\",\"value\":72.5,\"unit\":\"celsius\",\"status\":\"nominal\",\"traceId\":\"test-trace-001\"}' - verify 201. (2) 'curl -X POST ...' with machine-002 - verify 201. (3) 'curl http://localhost:5000/api/readings' - verify returns array with 2+ items. (4) 'curl \"http://localhost:5000/api/readings?machineId=machine-001\"' - verify returns only machine-001 readings. (5) 'curl http://localhost:5000/api/readings/machine-002' - verify returns machine-002 readings. (6) 'curl http://localhost:5000/health' - verify 200 OK with healthy status. (7) Open Jaeger UI http://localhost:16686, select service 'telemetry-api', find recent traces, verify ASP.NET Core → LiteDB span hierarchy, verify span attributes: http.method=POST, http.target=/api/readings, http.status_code=201, db.system=litedb, db.operation=insert. Verify console exporter outputs match Jaeger traces.",
+            "parentId": "undefined"
+          }
+        ]
       },
       {
         "id": "6",
@@ -393,9 +640,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-02-20T18:48:45.520Z",
+      "lastModified": "2026-03-12T17:12:47.704Z",
       "taskCount": 25,
-      "completedCount": 1,
+      "completedCount": 2,
       "tags": [
         "master"
       ]
