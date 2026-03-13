@@ -388,8 +388,68 @@
         "dependencies": [
           "5"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Dockerfile build stage with .NET 10.0 SDK",
+            "description": "Set up the multi-stage Dockerfile build stage using .NET 10.0 SDK base image for compiling the TelemetryApi project",
+            "dependencies": [],
+            "details": "Create src/TelemetryApi/Dockerfile. Add build stage: FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build. Set WORKDIR /src. Copy TelemetryApi.csproj first for layer caching optimization: COPY [\"src/TelemetryApi/TelemetryApi.csproj\", \"src/TelemetryApi/\"]. Run dotnet restore \"src/TelemetryApi/TelemetryApi.csproj\". This establishes the foundation for the multi-stage build process using the correct .NET 10.0 target framework as specified in TelemetryApi.csproj:4.",
+            "status": "pending",
+            "testStrategy": "Verify the Dockerfile build stage syntax is correct by running 'docker build --target build -t telemetry-api-build /Users/lucasm/dev/dist-telemetry-exp' from the project root. Check that restore completes successfully and dependencies from TelemetryApi.csproj (LiteDB, OpenTelemetry packages, Swashbuckle) are downloaded.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Add source copy and publish step to build stage",
+            "description": "Complete the build stage by copying all source files and running dotnet publish to create optimized release artifacts",
+            "dependencies": [
+              1
+            ],
+            "details": "After the restore step in the build stage, add COPY . . to copy all source files into the container. Then run RUN dotnet publish \"src/TelemetryApi/TelemetryApi.csproj\" -c Release -o /app/publish --no-restore. This creates optimized binaries for the TelemetryApi Web API application including controllers (ReadingsController.cs, HealthController.cs), LiteDB repository, and OpenTelemetry instrumentation code.",
+            "status": "pending",
+            "testStrategy": "Build the complete build stage and verify publish artifacts are created: 'docker build --target build -t telemetry-api-build /Users/lucasm/dev/dist-telemetry-exp'. Inspect the published files with 'docker run --rm telemetry-api-build ls -la /app/publish' to confirm TelemetryApi.dll and dependencies are present.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Create runtime stage with .NET 10.0 ASP.NET base image",
+            "description": "Set up the final runtime stage using the minimal ASP.NET 10.0 runtime image and configure the application workspace",
+            "dependencies": [
+              2
+            ],
+            "details": "Add runtime stage: FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final. Set WORKDIR /app. Set environment variable ENV ASPNETCORE_URLS=http://+:8080 to configure Kestrel to listen on port 8080 for all interfaces. EXPOSE 8080 to document the container port. Create volume mount point with RUN mkdir -p /app/data && chmod 777 /app/data to ensure LiteDB can write to ./data/telemetry.db as configured in LiteDbRepository.cs:15.",
+            "status": "pending",
+            "testStrategy": "Build the complete Dockerfile and verify the runtime stage is correctly configured: 'docker build -t telemetry-api:latest /Users/lucasm/dev/dist-telemetry-exp'. Check image size with 'docker images telemetry-api' to confirm it's optimized (runtime-only should be <200MB vs SDK which is ~700MB). Inspect the image layers with 'docker history telemetry-api:latest'.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Configure non-root user and copy artifacts to runtime stage",
+            "description": "Implement security best practices by running the container as a non-root user and copying published artifacts from build stage",
+            "dependencies": [
+              3
+            ],
+            "details": "In the runtime stage, add RUN adduser --disabled-password --gecos '' --uid 1000 appuser to create a non-root user. Add COPY --from=build --chown=appuser:appuser /app/publish . to copy the published artifacts from the build stage with proper ownership. Ensure /app/data directory is writable by appuser (already handled in previous step with chmod 777). Add USER appuser to switch to the non-root user for running the application.",
+            "status": "pending",
+            "testStrategy": "Run the container and verify it runs as non-root user: 'docker run --rm telemetry-api:latest whoami' should output 'appuser' not 'root'. Check file permissions with 'docker run --rm telemetry-api:latest ls -la /app' to confirm artifacts are owned by appuser.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Set ENTRYPOINT and validate complete Dockerfile",
+            "description": "Configure the container startup command and perform end-to-end validation of the complete multi-stage Dockerfile",
+            "dependencies": [
+              4
+            ],
+            "details": "Add ENTRYPOINT [\"dotnet\", \"TelemetryApi.dll\"] as the final instruction in the runtime stage. Ensure the complete Dockerfile properly integrates with docker-compose.yml network (otel-network) and can connect to Jaeger (http://jaeger:4317) and HiveMQ services. The container should automatically create the /app/data directory for LiteDB persistence and expose Swagger UI in development mode as configured in Program.cs:35-38.",
+            "status": "pending",
+            "testStrategy": "Build final image: 'docker build -t telemetry-api:latest /Users/lucasm/dev/dist-telemetry-exp'. Run standalone test: 'docker run -p 5000:8080 -v telemetry-data:/app/data telemetry-api:latest'. Test health endpoint at http://localhost:5000/health. Test Swagger UI at http://localhost:5000/swagger. Verify LiteDB creates database file in mounted volume. Check container logs show OpenTelemetry initialization and ASP.NET Core startup on port 8080.",
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-03-13T18:25:58.753Z"
       },
       {
         "id": "7",
@@ -656,9 +716,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-13T18:19:26.027Z",
+      "lastModified": "2026-03-13T18:25:58.753Z",
       "taskCount": 26,
-      "completedCount": 5,
+      "completedCount": 6,
       "tags": [
         "master"
       ]
