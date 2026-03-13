@@ -17,7 +17,7 @@
       "applicationUrl": "http://localhost:5082",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "OTLP_ENDPOINT_URL" :  "http://localhost:4317/"
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317"
       }
     },
     "https": {
@@ -28,7 +28,7 @@
       "applicationUrl": "https://localhost:7184;http://localhost:5082",
       "environmentVariables": {
         "ASPNETCORE_ENVIRONMENT": "Development",
-        "OTLP_ENDPOINT_URL" :  "http://localhost:4317/"
+        "OTEL_EXPORTER_OTLP_ENDPOINT": "http://localhost:4317"
       }
     },
     "IIS Express": {

@@ -1,5 +1,7 @@
+using System.Diagnostics;
 using LiteDB;
 using TelemetryApi.Models;
+using TelemetryApi.Telemetry;
 
 namespace TelemetryApi.Data;
 
@@ -21,24 +23,57 @@ internal sealed class LiteDbRepository : IMachineReadingRepository, IDisposable
 
     public Guid Insert(MachineReading reading)
     {
-        var result = _collection.Insert(reading);
-        return result.AsGuid;
+        using var activity = ActivitySources.LiteDb.StartActivity("litedb.insert MachineReadings");
+        activity?.SetTag("db.system", "litedb");
+        activity?.SetTag("db.operation", "insert");
+        activity?.SetTag("db.name", "telemetry");
+        activity?.SetTag("db.litedb.collection", "MachineReadings");
+
+        try
+        {
+            var result = _collection.Insert(reading);
+            return result.AsGuid;
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
     }
 
     public IEnumerable<MachineReading> Find(string? machineId = null, DateTime? startDate = null, DateTime? endDate = null)
     {
-        var query = _collection.Query();
+        using var activity = ActivitySources.LiteDb.StartActivity("litedb.find MachineReadings");
+        activity?.SetTag("db.system", "litedb");
+        activity?.SetTag("db.operation", "find");
+        activity?.SetTag("db.name", "telemetry");
+        activity?.SetTag("db.litedb.collection", "MachineReadings");
 
-        if (machineId is not null)
-            query = query.Where(x => x.MachineId == machineId);
+        var filterCount = (machineId is not null ? 1 : 0)
+                        + (startDate is not null ? 1 : 0)
+                        + (endDate is not null ? 1 : 0);
+        activity?.SetTag("db.litedb.filter.count", filterCount);
 
-        if (startDate is not null)
-            query = query.Where(x => x.Timestamp >= startDate);
+        try
+        {
+            var query = _collection.Query();
 
-        if (endDate is not null)
-            query = query.Where(x => x.Timestamp <= endDate);
+            if (machineId is not null)
+                query = query.Where(x => x.MachineId == machineId);
 
-        return query.ToList();
+            if (startDate is not null)
+                query = query.Where(x => x.Timestamp >= startDate);
+
+            if (endDate is not null)
+                query = query.Where(x => x.Timestamp <= endDate);
+
+            return query.ToList();
+        }
+        catch (Exception ex)
+        {
+            activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
     }
 
     public void Dispose() => _database.Dispose();
