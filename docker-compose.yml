@@ -35,7 +35,7 @@ services:
     restart: unless-stopped
     networks:
       - otel-network
-
+      
 networks:
   otel-network:
     driver: bridge

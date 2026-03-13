@@ -164,7 +164,7 @@
         "dependencies": [
           "1"
         ],
-        "status": "in-progress",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -198,9 +198,10 @@
               2
             ],
             "details": "Navigate to src/TelemetryApi and execute the following dotnet add package commands: 'dotnet add package OpenTelemetry.Extensions.Hosting --version 1.9.0', 'dotnet add package OpenTelemetry.Instrumentation.AspNetCore --version 1.9.0', 'dotnet add package OpenTelemetry.Instrumentation.Http --version 1.9.0', 'dotnet add package OpenTelemetry.Exporter.OpenTelemetryProtocol --version 1.9.0'. These packages enable automatic instrumentation for ASP.NET Core requests, outgoing HTTP calls, and OTLP export to Jaeger.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run 'dotnet list package' to verify all OpenTelemetry packages are installed with correct versions (1.9.0+), execute 'dotnet restore' to ensure no dependency conflicts",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-03-13T14:06:45.329Z"
           },
           {
             "id": 4,
@@ -230,7 +231,7 @@
             "updatedAt": "2026-03-12T17:12:47.704Z"
           }
         ],
-        "updatedAt": "2026-03-12T17:12:47.704Z"
+        "updatedAt": "2026-03-13T14:06:45.329Z"
       },
       {
         "id": "4",
@@ -640,9 +641,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-12T17:12:47.704Z",
+      "lastModified": "2026-03-13T14:06:45.332Z",
       "taskCount": 25,
-      "completedCount": 2,
+      "completedCount": 3,
       "tags": [
         "master"
       ]
