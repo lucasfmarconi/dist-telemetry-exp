@@ -461,8 +461,9 @@
         "dependencies": [
           "6"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-03-13T19:15:14.827Z"
       },
       {
         "id": "8",
@@ -474,8 +475,70 @@
         "dependencies": [
           "2"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create MachineSimulator project directory and Worker Service scaffolding",
+            "description": "Create the src/MachineSimulator directory and initialize a .NET Worker Service project using the dotnet CLI with net10.0 target framework",
+            "dependencies": [],
+            "details": "Execute 'mkdir -p src/MachineSimulator' to create the project directory. Run 'dotnet new worker -n MachineSimulator -f net10.0 -o src/MachineSimulator' to scaffold the Worker Service project template. Verify that Program.cs and Worker.cs are generated with the default background service implementation.",
+            "status": "pending",
+            "testStrategy": "Verify directory exists at src/MachineSimulator. Check that MachineSimulator.csproj file is created with TargetFramework set to net10.0. Confirm Worker.cs and Program.cs files are present.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 2,
+            "title": "Configure project file with nullable types and container support",
+            "description": "Update MachineSimulator.csproj to enable nullable reference types and SDK container support matching the TelemetryApi project configuration",
+            "dependencies": [
+              1
+            ],
+            "details": "Edit src/MachineSimulator/MachineSimulator.csproj to add <Nullable>enable</Nullable> and <EnableSdkContainerSupport>true</EnableSdkContainerSupport> to the PropertyGroup section, following the same pattern used in src/TelemetryApi/TelemetryApi.csproj at lines 5-6.",
+            "status": "pending",
+            "testStrategy": "Read the .csproj file and verify PropertyGroup contains Nullable and EnableSdkContainerSupport properties. Run 'dotnet build src/MachineSimulator' to ensure configuration is valid.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 3,
+            "title": "Add MQTTnet NuGet packages to project",
+            "description": "Install MQTTnet client library and managed client extension packages for MQTT 5.0 communication with HiveMQ broker",
+            "dependencies": [
+              2
+            ],
+            "details": "Execute 'dotnet add src/MachineSimulator package MQTTnet --version 4.3.7.1505' and 'dotnet add src/MachineSimulator package MQTTnet.Extensions.ManagedClient --version 4.3.7.1505' to add the latest stable MQTTnet v4.x packages. These packages enable MQTT client functionality for publishing machine telemetry data to topics like 'machines/{machineId}/readings' on the HiveMQ broker configured in docker-compose.yml at lines 22-37.",
+            "status": "pending",
+            "testStrategy": "Verify MachineSimulator.csproj contains PackageReference entries for MQTTnet and MQTTnet.Extensions.ManagedClient with version 4.3.7.1505 or higher. Run 'dotnet restore src/MachineSimulator' and confirm packages are restored successfully without errors.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 4,
+            "title": "Add OpenTelemetry NuGet packages matching TelemetryApi versions",
+            "description": "Install OpenTelemetry SDK and OTLP exporter packages at version 1.15.0 to match the existing TelemetryApi project dependencies",
+            "dependencies": [
+              2
+            ],
+            "details": "Execute 'dotnet add src/MachineSimulator package OpenTelemetry --version 1.15.0', 'dotnet add src/MachineSimulator package OpenTelemetry.Exporter.OpenTelemetryProtocol --version 1.15.0', 'dotnet add src/MachineSimulator package OpenTelemetry.Extensions.Hosting --version 1.15.0', and 'dotnet add src/MachineSimulator package System.Text.Json' to enable distributed tracing and OTLP export to Jaeger. These versions match the TelemetryApi project configuration at src/TelemetryApi/TelemetryApi.csproj lines 13-16.",
+            "status": "pending",
+            "testStrategy": "Verify MachineSimulator.csproj contains PackageReference entries for OpenTelemetry (1.15.0), OpenTelemetry.Exporter.OpenTelemetryProtocol (1.15.0), OpenTelemetry.Extensions.Hosting (1.15.0), and System.Text.Json. Run 'dotnet restore src/MachineSimulator' to confirm all packages restore correctly.",
+            "parentId": "undefined"
+          },
+          {
+            "id": 5,
+            "title": "Add MachineSimulator project to solution file",
+            "description": "Register the new MachineSimulator project in the distributed-telemetry-exp.sln solution file to enable building the entire solution together",
+            "dependencies": [
+              1,
+              3,
+              4
+            ],
+            "details": "Execute 'dotnet sln distributed-telemetry-exp.sln add src/MachineSimulator/MachineSimulator.csproj' to add the project to the existing solution. The solution file at distributed-telemetry-exp.sln currently only contains the TelemetryApi project (line 3), so this adds MachineSimulator as the second project. Keep Worker.cs file for now as it will be replaced in a later task.",
+            "status": "pending",
+            "testStrategy": "Run 'dotnet sln distributed-telemetry-exp.sln list' and verify MachineSimulator project appears in the output. Execute 'dotnet build distributed-telemetry-exp.sln' to confirm the solution builds successfully with both projects. Run 'dotnet run --project src/MachineSimulator' and verify the Worker Service starts with default background service lifecycle logs.",
+            "parentId": "undefined"
+          }
+        ],
+        "updatedAt": "2026-03-13T19:20:57.413Z"
       },
       {
         "id": "9",
@@ -716,9 +779,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-03-13T18:25:58.753Z",
+      "lastModified": "2026-03-13T19:20:57.413Z",
       "taskCount": 26,
-      "completedCount": 6,
+      "completedCount": 8,
       "tags": [
         "master"
       ]
