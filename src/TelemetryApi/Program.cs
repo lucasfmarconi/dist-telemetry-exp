@@ -1,5 +1,6 @@
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using TelemetryApi.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +24,8 @@ builder.Services.AddOpenTelemetry().ConfigureResource(resource =>
             tracing.AddConsoleExporter();
         }
     });
+
+builder.Services.AddSingleton<IMachineReadingRepository, LiteDbRepository>();
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
