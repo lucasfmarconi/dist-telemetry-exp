@@ -73,8 +73,9 @@ public class TelemetryProcessor(
                 if (reading is not null)
                 {
                     logger.LogInformation(
-                        "Received reading from {MachineId}: T={Temperature:F1} P={Pressure:F1} RPM={Rpm:F0}",
-                        reading.MachineId, reading.Temperature, reading.Pressure, reading.Rpm);
+                        "Received reading from {MachineId}: T={Temperature:F1} P={Pressure:F1} RPM={Rpm:F0} TraceId={TraceId}",
+                        reading.MachineId, reading.Temperature, reading.Pressure, reading.Rpm,
+                        activity?.TraceId);
 
                     await apiClient.PostReadingAsync(reading, stoppingToken);
                 }

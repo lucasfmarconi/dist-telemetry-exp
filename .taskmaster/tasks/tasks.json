@@ -1082,8 +1082,74 @@
         "dependencies": [
           "18"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Configure JSON structured logging in all three services",
+            "description": "Add JSON console logging configuration with scope support to TelemetryApi, MachineSimulator, and Orchestrator Program.cs files",
+            "dependencies": [],
+            "details": "In each service's Program.cs (TelemetryApi/Program.cs:6, MachineSimulator/Program.cs:6, Orchestrator/Program.cs:7), add logging configuration after builder creation: builder.Logging.ClearProviders().AddConsole().AddJsonConsole(options => { options.IncludeScopes = true; options.JsonWriterOptions = new JsonWriterOptions { Indented = false }; }). This enables structured JSON output with trace scope information included in each log entry.",
+            "status": "done",
+            "testStrategy": "Run docker-compose up and verify logs from all three containers output in JSON format. Check that each log entry contains structured fields like timestamp, level, category, message, and scopes. Verify console logger is still available for non-JSON formatted output.",
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T14:27:53.108Z"
+          },
+          {
+            "id": 2,
+            "title": "Create TraceId correlation middleware for TelemetryApi",
+            "description": "Add middleware to TelemetryApi that injects Activity.Current.TraceId into log scope and adds X-Correlation-Id to response headers",
+            "dependencies": [
+              1
+            ],
+            "details": "Create src/TelemetryApi/Middleware/TraceCorrelationMiddleware.cs. In InvokeAsync method, check if Activity.Current is not null, then use ILogger.BeginScope to add TraceId to scope: using (_logger.BeginScope(new Dictionary<string, object> { [\"TraceId\"] = Activity.Current.TraceId.ToString() })). Add response header: context.Response.Headers.Add(\"X-Correlation-Id\", Activity.Current.TraceId.ToString()). Register middleware in Program.cs after app creation (line 33): app.UseMiddleware<TraceCorrelationMiddleware>() before UseHttpsRedirection.",
+            "status": "done",
+            "testStrategy": "Call API endpoint POST /api/readings. Verify response contains X-Correlation-Id header matching the TraceId from Jaeger. Check API logs contain TraceId field in scope. Use curl -v to inspect headers: curl -v -X POST http://localhost:5000/api/readings -H 'Content-Type: application/json' -d '{...}' and verify X-Correlation-Id present.",
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T14:27:53.114Z"
+          },
+          {
+            "id": 3,
+            "title": "Add TraceId to structured logs in worker services",
+            "description": "Update TelemetryPublisher and TelemetryProcessor to include TraceId in all structured log statements using Activity.Current",
+            "dependencies": [
+              1
+            ],
+            "details": "In MachineSimulator/Services/TelemetryPublisher.cs:107, update LogInformation to include TraceId: _logger.LogInformation(\"Published reading for {MachineId}: T={Temperature:F1} P={Pressure:F1} RPM={Rpm:F0} TraceId={TraceId}\", reading.MachineId, reading.Temperature, reading.Pressure, reading.Rpm, Activity.Current?.TraceId). Similarly in Orchestrator/Services/TelemetryProcessor.cs:75-77, update the LogInformation call to append TraceId parameter. Add TraceId logging in connection/disconnection events (lines 25, 40, 46, 50, 96, 112) for both services.",
+            "status": "done",
+            "testStrategy": "Run full stack with docker-compose up. Publish a telemetry reading and grep logs for a specific TraceId. Verify the same TraceId appears in: machine-simulator publish log, orchestrator received log, orchestrator API client log, and API insert log. Example: docker-compose logs | grep <trace-id> should show correlation across all services.",
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T14:27:53.117Z"
+          },
+          {
+            "id": 4,
+            "title": "Configure log levels via appsettings.json files",
+            "description": "Update appsettings.json for production (Information) and appsettings.Development.json for development (Debug) across all services",
+            "dependencies": [
+              1
+            ],
+            "details": "In src/TelemetryApi/appsettings.json:2-7, src/MachineSimulator/appsettings.json:2-7, src/Orchestrator/appsettings.json:2-7, ensure LogLevel.Default is 'Information' and Microsoft.* categories are 'Warning'. In corresponding appsettings.Development.json files, change LogLevel.Default to 'Debug' for verbose development logging. Add category-specific overrides if needed: 'TelemetryApi': 'Debug', 'MachineSimulator': 'Debug', 'Orchestrator': 'Debug'. This allows detailed trace debugging in dev without noise in production.",
+            "status": "done",
+            "testStrategy": "Run with ASPNETCORE_ENVIRONMENT=Development and verify Debug logs appear. Run with ASPNETCORE_ENVIRONMENT=Production and verify only Information and above logs appear. Test by adding _logger.LogDebug statements in TelemetryProcessor and verifying they only show in Development mode. Check docker-compose.yml environment variables set ASPNETCORE_ENVIRONMENT appropriately.",
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T14:27:53.119Z"
+          },
+          {
+            "id": 5,
+            "title": "Add structured logging to existing log statements in controllers and clients",
+            "description": "Audit and update all existing logger calls in ReadingsController, TelemetryApiClient, and other components to use structured message templates with TraceId",
+            "dependencies": [
+              2,
+              3
+            ],
+            "details": "In src/TelemetryApi/Controllers/ReadingsController.cs, inject ILogger<ReadingsController> and add structured logging in Insert (line 18-22), GetAll (line 26-32), GetByMachineId (line 36-40). Log format: _logger.LogInformation(\"Reading inserted for {MachineId} with TraceId {TraceId}\", reading.MachineId, Activity.Current?.TraceId). In src/Orchestrator/Clients/TelemetryApiClient.cs, add TraceId to existing log statements. Ensure all log messages use parameter placeholders {ParamName} instead of string interpolation for proper structured logging.",
+            "status": "done",
+            "testStrategy": "Run integration test flow: machine-simulator publishes → orchestrator processes → API stores. Examine logs from all services and verify: (1) All log entries are JSON-formatted, (2) TraceId is present and consistent across service boundaries, (3) Structured properties are extracted (MachineId, Temperature, etc.), (4) Can filter logs by specific TraceId and see complete request flow, (5) X-Correlation-Id header returned by API matches TraceId in Jaeger UI.",
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T14:27:53.121Z"
+          }
+        ],
+        "updatedAt": "2026-04-16T14:27:53.121Z"
       },
       {
         "id": "20",
@@ -1180,9 +1246,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-04-16T14:06:53.086Z",
+      "lastModified": "2026-04-16T14:27:53.121Z",
       "taskCount": 26,
-      "completedCount": 18,
+      "completedCount": 19,
       "tags": [
         "master"
       ]

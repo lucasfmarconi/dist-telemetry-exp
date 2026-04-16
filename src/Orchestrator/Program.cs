@@ -6,6 +6,8 @@ using Orchestrator.Services;
 
 var builder = Host.CreateApplicationBuilder(args);
 
+builder.Logging.AddJsonConsole(opts => opts.IncludeScopes = true);
+
 var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] ?? "http://jaeger:4317";
 var apiBaseUrl = builder.Configuration["Api:BaseUrl"] ?? "http://api:8080";
 
@@ -19,8 +21,7 @@ builder.Services.AddOpenTelemetry()
         {
             options.Endpoint = new Uri(otlpEndpoint);
             options.Protocol = OtlpExportProtocol.Grpc;
-        })
-        .AddConsoleExporter());
+        }));
 
 builder.Services.AddHttpClient<ITelemetryApiClient, TelemetryApiClient>(client =>
 {

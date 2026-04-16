@@ -2,8 +2,11 @@ using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using TelemetryApi.Data;
+using TelemetryApi.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Logging.AddJsonConsole(opts => opts.IncludeScopes = true);
 
 var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] ?? "http://jaeger:4317";
 
@@ -20,8 +23,7 @@ builder.Services.AddOpenTelemetry()
             {
                 otlpOptions.Endpoint = new Uri(otlpEndpoint);
                 otlpOptions.Protocol = OtlpExportProtocol.Grpc;
-            })
-            .AddConsoleExporter();
+            });
     });
 
 builder.Services.AddSingleton<IMachineReadingRepository, LiteDbRepository>();
@@ -43,6 +45,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 
+app.UseMiddleware<TraceCorrelationMiddleware>();
 app.UseHttpsRedirection();
 app.MapControllers();
 

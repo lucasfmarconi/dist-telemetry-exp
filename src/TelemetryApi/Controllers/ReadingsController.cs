@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 using TelemetryApi.Data;
 using TelemetryApi.Models;
@@ -6,19 +7,15 @@ namespace TelemetryApi.Controllers;
 
 [ApiController]
 [Route("api/readings")]
-public class ReadingsController : ControllerBase
+public class ReadingsController(IMachineReadingRepository repository, ILogger<ReadingsController> logger)
+    : ControllerBase
 {
-    private readonly IMachineReadingRepository _repository;
-
-    public ReadingsController(IMachineReadingRepository repository)
-    {
-        _repository = repository;
-    }
-
     [HttpPost]
     public IActionResult Insert([FromBody] MachineReading reading)
     {
-        var id = _repository.Insert(reading);
+        var id = repository.Insert(reading);
+        logger.LogInformation("Inserted reading for {MachineId} metric={Metric} value={Value} TraceId={TraceId}",
+            reading.MachineId, reading.Metric, reading.Value, Activity.Current?.TraceId);
         return CreatedAtAction(nameof(GetByMachineId), new { machineId = reading.MachineId }, new { id, reading });
     }
 
@@ -28,14 +25,15 @@ public class ReadingsController : ControllerBase
         [FromQuery] DateTime? startDate,
         [FromQuery] DateTime? endDate)
     {
-        var readings = _repository.Find(machineId, startDate, endDate);
+        var readings = repository.Find(machineId, startDate, endDate).ToList();
+        logger.LogDebug("GetAll returned {Count} readings for machineId={MachineId}", readings.Count, machineId);
         return Ok(readings);
     }
 
     [HttpGet("{machineId}")]
     public IActionResult GetByMachineId(string machineId)
     {
-        var readings = _repository.Find(machineId).ToList();
+        var readings = repository.Find(machineId).ToList();
         return readings.Any() ? Ok(readings) : NotFound();
     }
 }

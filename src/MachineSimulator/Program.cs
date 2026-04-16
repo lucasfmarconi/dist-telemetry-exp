@@ -5,6 +5,8 @@ using OpenTelemetry.Trace;
 
 var builder = Host.CreateApplicationBuilder(args);
 
+builder.Logging.AddJsonConsole(opts => opts.IncludeScopes = true);
+
 var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] ?? "http://jaeger:4317";
 
 builder.Services.AddOpenTelemetry()
@@ -16,8 +18,7 @@ builder.Services.AddOpenTelemetry()
         {
             options.Endpoint = new Uri(otlpEndpoint);
             options.Protocol = OtlpExportProtocol.Grpc;
-        })
-        .AddConsoleExporter());
+        }));
 
 builder.Services.AddHostedService<TelemetryPublisher>();
 

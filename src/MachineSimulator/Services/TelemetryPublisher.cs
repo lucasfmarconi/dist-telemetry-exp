@@ -104,8 +104,8 @@ public class TelemetryPublisher(ILogger<TelemetryPublisher> logger, IConfigurati
             message.UserProperties = userProperties;
 
             await _mqttClient.PublishAsync(message, stoppingToken);
-            logger.LogInformation("Published reading for {MachineId}: T={Temperature:F1} P={Pressure:F1} RPM={Rpm:F0}",
-                reading.MachineId, reading.Temperature, reading.Pressure, reading.Rpm);
+            logger.LogInformation("Published reading for {MachineId}: T={Temperature:F1} P={Pressure:F1} RPM={Rpm:F0} TraceId={TraceId}",
+                reading.MachineId, reading.Temperature, reading.Pressure, reading.Rpm, activity?.TraceId);
         }
 
         if (_mqttClient.IsConnected)
