@@ -2,7 +2,7 @@
   "master": {
     "tasks": [
       {
-        "id": "1",
+        "id": 1,
         "title": "Create docker-compose.yml with Jaeger all-in-one service",
         "description": "Initialize Docker Compose infrastructure with Jaeger observability backend as the foundational OTLP trace collection service",
         "details": "Create docker-compose.yml in project root. Add Jaeger all-in-one service using image 'jaegertracing/all-in-one:latest'. Map ports: 16686 (UI), 4317 (OTLP gRPC), 4318 (OTLP HTTP). Set environment variables: SPAN_STORAGE_TYPE=memory, COLLECTOR_OTLP_ENABLED=true, memory.max-traces=50000. Configure restart policy: unless-stopped. Add healthcheck using http://localhost:16686 endpoint with 30s interval, 5s timeout, 3 retries. Add named network 'otel-network' with bridge driver.",
@@ -79,7 +79,7 @@
         "updatedAt": "2026-02-20T18:48:45.520Z"
       },
       {
-        "id": "2",
+        "id": 2,
         "title": "Add HiveMQ MQTT broker service to docker-compose.yml",
         "description": "Configure HiveMQ Community Edition MQTT broker service with MQTT 5.0 support for message-based trace context propagation",
         "details": "Add HiveMQ service to docker-compose.yml using image 'hivemq/hivemq-ce:latest'. Map ports: 1883 (MQTT), 8080 (HiveMQ Web UI). Create hivemq-config.xml in ./config/hivemq/ directory enabling anonymous authentication and MQTT 5.0 protocol support. Mount config as volume: './config/hivemq:/opt/hivemq/conf'. Add healthcheck using TCP socket check on port 1883 with 10s interval, 5s timeout, 5 retries. Set restart policy: unless-stopped. Attach to 'otel-network'.",
@@ -155,7 +155,7 @@
         "updatedAt": "2026-02-20T19:02:53.624Z"
       },
       {
-        "id": "3",
+        "id": 3,
         "title": "Create .NET 8 ASP.NET Core Web API project structure",
         "description": "Initialize the API service project with .NET 8 Web API template and required NuGet package dependencies",
         "details": "Create src/TelemetryApi directory. Run 'dotnet new webapi -n TelemetryApi -f net8.0 --use-minimal-apis'. Add NuGet packages: OpenTelemetry.Extensions.Hosting (1.9.0+), OpenTelemetry.Instrumentation.AspNetCore (1.9.0+), OpenTelemetry.Instrumentation.Http (1.9.0+), OpenTelemetry.Exporter.OpenTelemetryProtocol (1.9.0+), LiteDB (5.0.20+). Configure project for Docker build with <EnableSdkContainerSupport>true</EnableSdkContainerSupport>. Set target framework to net8.0. Enable nullable reference types.",
@@ -234,7 +234,7 @@
         "updatedAt": "2026-03-13T14:06:45.329Z"
       },
       {
-        "id": "4",
+        "id": 4,
         "title": "Implement MachineReading data model and LiteDB repository",
         "description": "Create domain model for machine telemetry data and repository pattern for LiteDB persistence with manual OTel instrumentation",
         "details": "Create Models/MachineReading.cs with properties: MachineId (string), Timestamp (DateTime), Metric (string), Value (double), Unit (string), Status (string), TraceId (string, optional). Create Data/LiteDbRepository.cs implementing Insert and Find operations. Initialize LiteDatabase with connection string from configuration (default: './data/telemetry.db'). Create static ActivitySource named 'TelemetryApi.LiteDB'. Wrap InsertReading with Activity named 'litedb.insert MachineReadings' using ActivityKind.Internal. Wrap FindReadings with 'litedb.find MachineReadings'. Add span attributes: db.system='litedb', db.operation='insert'|'find', db.name='telemetry'. Implement IDisposable for LiteDatabase cleanup.",
@@ -308,7 +308,7 @@
         "updatedAt": "2026-03-13T18:14:40.890Z"
       },
       {
-        "id": "5",
+        "id": 5,
         "title": "Implement API endpoints with OpenTelemetry auto-instrumentation",
         "description": "Create REST endpoints for machine reading ingestion and retrieval with full ASP.NET Core OTel instrumentation pipeline",
         "details": "Create Controllers/ReadingsController.cs or use minimal API endpoints. Implement POST /api/readings accepting MachineReading JSON body, calling LiteDbRepository.Insert, returning 201 Created with location header. Implement GET /api/readings returning all readings with optional query filters (machineId, startDate, endDate). Implement GET /api/readings/{machineId} returning filtered readings. Implement GET /health returning 200 OK with simple health check. In Program.cs, configure OpenTelemetry using builder.Services.AddOpenTelemetry().WithTracing(). Add AspNetCore instrumentation, Http instrumentation, and OtlpExporter pointing to 'http://jaeger:4317' (Docker internal). Set ResourceBuilder with service.name='telemetry-api', service.version='1.0.0'. Enable console exporter for debugging.",
@@ -379,7 +379,7 @@
         "updatedAt": "2026-03-13T18:19:26.027Z"
       },
       {
-        "id": "6",
+        "id": 6,
         "title": "Create multi-stage Dockerfile for API service",
         "description": "Build optimized Docker container image for API with .NET SDK build stage and runtime-only final stage",
         "details": "Create src/TelemetryApi/Dockerfile. Stage 1 (build): FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build, WORKDIR /src, COPY TelemetryApi.csproj, RUN dotnet restore, COPY source files, RUN dotnet publish -c Release -o /app/publish --no-restore. Stage 2 (runtime): FROM mcr.microsoft.com/dotnet/aspnet:8.0, WORKDIR /app, COPY from build stage, EXPOSE 8080, create volume mount point /app/data for LiteDB, ENTRYPOINT dotnet TelemetryApi.dll. Use non-root user. Set ASPNETCORE_URLS=http://+:8080 environment variable.",
@@ -452,7 +452,7 @@
         "updatedAt": "2026-03-13T18:25:58.753Z"
       },
       {
-        "id": "7",
+        "id": 7,
         "title": "Add API service to docker-compose.yml with dependencies",
         "description": "Integrate API service into Docker Compose with proper networking, volume mounts, healthchecks, and Jaeger dependency",
         "details": "Add 'api' service to docker-compose.yml. Set build context: './src/TelemetryApi', dockerfile: 'Dockerfile'. Map ports: '5000:8080'. Create named volume 'litedb-data' mounted to '/app/data' in container. Set environment variables: ASPNETCORE_ENVIRONMENT=Development, OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317, OTEL_SERVICE_NAME=telemetry-api, OTEL_SERVICE_VERSION=1.0.0. Add healthcheck using 'curl -f http://localhost:8080/health' with 30s interval, 5s timeout, 3 retries. Set depends_on jaeger with condition: service_started. Attach to 'otel-network'. Set restart: unless-stopped.",
@@ -466,7 +466,7 @@
         "updatedAt": "2026-03-13T19:15:14.827Z"
       },
       {
-        "id": "8",
+        "id": 8,
         "title": "Create .NET 8 Worker Service project for Machine Simulator",
         "description": "Initialize the machine-simulator Worker Service project with MQTTnet and OpenTelemetry dependencies",
         "details": "Create src/MachineSimulator directory. Run 'dotnet new worker -n MachineSimulator -f net8.0'. Add NuGet packages: MQTTnet (4.3.6+), MQTTnet.Extensions.ManagedClient (4.3.6+), OpenTelemetry (1.9.0+), OpenTelemetry.Exporter.OpenTelemetryProtocol (1.9.0+), System.Text.Json. Configure project with <EnableSdkContainerSupport>true</EnableSdkContainerSupport>. Remove default Worker.cs template. Enable nullable reference types. Set target framework to net8.0.",
@@ -541,7 +541,7 @@
         "updatedAt": "2026-03-13T19:20:57.413Z"
       },
       {
-        "id": "9",
+        "id": 9,
         "title": "Implement W3C TraceContext propagation helpers for MQTT",
         "description": "Create reusable ITextMapSetter and ITextMapGetter implementations for MQTT 5.0 User Properties context injection and extraction",
         "details": "Create Telemetry/MqttUserPropertiesSetter.cs implementing Action<List<MqttUserProperty>, string, string> for TextMapPropagator.Inject. Implementation: add new MqttUserProperty(key, value) to the list. Create Telemetry/MqttUserPropertiesGetter.cs implementing Func<List<MqttUserProperty>, string, IEnumerable<string>> for TextMapPropagator.Extract. Implementation: return props.Where(p => p.Name == key).Select(p => p.Value). Add unit tests for both helpers validating traceparent and tracestate header injection/extraction according to W3C TraceContext spec (version-traceId-spanId-flags format).",
@@ -551,10 +551,63 @@
           "8"
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create MqttUserPropertiesSetter class for context injection",
+            "description": "Implement the setter class that will inject W3C TraceContext headers into MQTT 5.0 User Properties for distributed tracing propagation",
+            "dependencies": [],
+            "details": "Create src/MachineSimulator/Telemetry/MqttUserPropertiesSetter.cs implementing Action<List<MqttUserProperty>, string, string> signature. The implementation should add new MqttUserProperty(key, value) to the list for each header (traceparent, tracestate). Place this in a new Telemetry folder under MachineSimulator project to mirror the TelemetryInstrumentation structure in TelemetryApi. Use the namespace MachineSimulator.Telemetry. The setter will be used with Propagators.DefaultTextMapPropagator.Inject() to inject context into MQTT messages.",
+            "status": "pending",
+            "testStrategy": "Unit test will create mock Activity with known TraceId/SpanId, inject into empty List<MqttUserProperty>, verify traceparent header exists with correct W3C format '00-<32-hex-traceid>-<16-hex-spanid>-<2-hex-flags>'"
+          },
+          {
+            "id": 2,
+            "title": "Create MqttUserPropertiesGetter class for context extraction",
+            "description": "Implement the getter class that will extract W3C TraceContext headers from MQTT 5.0 User Properties to restore parent trace context",
+            "dependencies": [],
+            "details": "Create src/MachineSimulator/Telemetry/MqttUserPropertiesGetter.cs implementing Func<List<MqttUserProperty>, string, IEnumerable<string>> signature. The implementation should return props.Where(p => p.Name == key).Select(p => p.Value) to extract all values matching the requested header key. This handles both traceparent and tracestate headers. Use the namespace MachineSimulator.Telemetry. The getter will be used with Propagators.DefaultTextMapPropagator.Extract() to restore parent context from incoming MQTT messages.",
+            "status": "pending",
+            "testStrategy": "Unit test will pre-populate List<MqttUserProperty> with valid traceparent/tracestate values, extract using the getter, verify correct parent context is restored and Activity.Current has expected TraceId and ParentSpanId"
+          },
+          {
+            "id": 3,
+            "title": "Create unit test project for MachineSimulator",
+            "description": "Set up xUnit test project with necessary dependencies for testing MQTT trace propagation helpers",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Create test/MachineSimulator.Tests/MachineSimulator.Tests.csproj using 'dotnet new xunit' targeting net10.0. Add PackageReferences: OpenTelemetry 1.15.0, MQTTnet 5.0.0.1405, xunit 2.9.3, xunit.runner.visualstudio 3.0.1, Microsoft.NET.Test.Sdk 17.13.0. Add project reference to MachineSimulator.csproj. Add test project to distributed-telemetry-exp.sln. Create test/MachineSimulator.Tests directory structure following .NET conventions.",
+            "status": "pending",
+            "testStrategy": "Run 'dotnet test' to verify test project builds and discovers tests. Verify project reference resolves correctly and can access MachineSimulator.Telemetry namespace."
+          },
+          {
+            "id": 4,
+            "title": "Implement unit tests for MqttUserPropertiesSetter",
+            "description": "Write comprehensive unit tests validating W3C TraceContext injection into MQTT User Properties using the setter helper",
+            "dependencies": [
+              3
+            ],
+            "details": "Create test/MachineSimulator.Tests/Telemetry/MqttUserPropertiesSetterTests.cs. Test cases: (1) Inject_WithActiveActivity_AddsTraceparentHeader - create Activity with known TraceId/SpanId, inject into empty list, assert traceparent format matches '00-{traceId}-{spanId}-{flags}' with correct hex lengths. (2) Inject_WithTraceState_AddsTracestateHeader - create Activity with TraceStateString, verify tracestate property added. (3) Inject_WithoutActivity_DoesNotAddHeaders - inject with Activity.Current = null, verify list remains empty. Use Propagators.DefaultTextMapPropagator for injection following OpenTelemetry SDK patterns from TelemetryApi.",
+            "status": "pending",
+            "testStrategy": "Run 'dotnet test --filter MqttUserPropertiesSetterTests' and verify all test cases pass. Validate traceparent format using regex pattern '^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$'. Check test coverage includes happy path and edge cases."
+          },
+          {
+            "id": 5,
+            "title": "Implement unit tests for MqttUserPropertiesGetter",
+            "description": "Write comprehensive unit tests validating W3C TraceContext extraction from MQTT User Properties using the getter helper",
+            "dependencies": [
+              3
+            ],
+            "details": "Create test/MachineSimulator.Tests/Telemetry/MqttUserPropertiesGetterTests.cs. Test cases: (1) Extract_WithValidTraceparent_RestoresParentContext - populate list with valid traceparent MqttUserProperty, extract using Propagators.DefaultTextMapPropagator.Extract, start new Activity, verify Activity.ParentId matches extracted context. (2) Extract_WithMultipleValues_ReturnsAll - add multiple properties with same key, verify getter returns all values as IEnumerable. (3) Extract_WithMissingHeaders_ReturnsEmpty - extract from empty list, verify no exception and empty result. (4) Extract_WithInvalidFormat_HandlesGracefully - add malformed traceparent, verify extraction doesn't throw exception.",
+            "status": "pending",
+            "testStrategy": "Run 'dotnet test --filter MqttUserPropertiesGetterTests' and verify all test cases pass. Validate end-to-end: inject context with setter, extract with getter, verify TraceId/ParentSpanId propagated correctly. Test round-trip compatibility with W3C TraceContext spec."
+          }
+        ]
       },
       {
-        "id": "10",
+        "id": 10,
         "title": "Implement MQTT publisher with OTel instrumentation in Machine Simulator",
         "description": "Create background service that generates synthetic machine telemetry, publishes to HiveMQ with trace context injection, and exports spans to Jaeger",
         "details": "Create Services/TelemetryPublisher.cs extending BackgroundService. Create static ActivitySource named 'MachineSimulator.MQTT'. In ExecuteAsync, configure MqttClientOptionsBuilder with .WithTcpServer(mqttHost, 1883), .WithProtocolVersion(MqttProtocolVersion.V500), .WithClientId('machine-simulator-{guid}'). Create managed MQTT client with auto-reconnect. In publish loop (configurable interval from IConfiguration, default 5s), generate random MachineReading payload (MachineId: 'machine-001', random temperature/pressure/rpm values). Serialize to JSON. Create Activity with name 'mqtt.publish machines/{machineId}/telemetry', kind: Producer. Inject trace context into User Properties using MqttUserPropertiesSetter. Build MqttApplicationMessage with topic 'machines/{machineId}/telemetry', JSON payload, User Properties. Publish message. Add span attributes: messaging.system='mqtt', messaging.destination=topic, messaging.operation='publish'. Configure OpenTelemetry in Program.cs with OtlpExporter to 'http://jaeger:4317', ResourceBuilder with service.name='machine-simulator'.",
@@ -564,10 +617,65 @@
           "9"
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create MachineReading model and TelemetryPublisher service class structure",
+            "description": "Define local MachineReading payload model and create TelemetryPublisher BackgroundService scaffolding with dependency injection setup",
+            "dependencies": [],
+            "details": "Create Models/MachineReading.cs as a simple record with properties: MachineId (string), Timestamp (DateTime), Temperature (double), Pressure (double), Rpm (double). Create Services/TelemetryPublisher.cs extending BackgroundService. Inject ILogger<TelemetryPublisher> and IConfiguration. Create static ActivitySource field named 'MachineSimulator.MQTT'. Override ExecuteAsync method with CancellationToken parameter. Register TelemetryPublisher as hosted service in Program.cs using builder.Services.AddHostedService<TelemetryPublisher>(). Remove existing Worker.cs registration.",
+            "status": "pending",
+            "testStrategy": "Verify project compiles without errors. Run the simulator and confirm TelemetryPublisher service starts and logs initialization. Check that Worker.cs is no longer registered and TelemetryPublisher is the active BackgroundService."
+          },
+          {
+            "id": 2,
+            "title": "Implement MQTT client initialization with MQTTnet v5 API and auto-reconnect",
+            "description": "Configure MqttClientOptionsBuilder with HiveMQ connection settings and implement manual reconnect logic for MQTTnet v5",
+            "dependencies": [
+              1
+            ],
+            "details": "In TelemetryPublisher.ExecuteAsync, read mqttHost from IConfiguration (key: 'Mqtt:Host', default: 'localhost'). Use MqttClientFactory to create IMqttClient. Build MqttClientOptions using MqttClientOptionsBuilder with .WithTcpServer(mqttHost, 1883), .WithProtocolVersion(MqttProtocolVersion.V500), .WithClientId($'machine-simulator-{Guid.NewGuid()}'). Implement try-catch around ConnectAsync with retry loop (exponential backoff, max 5 retries). Add DisconnectedAsync event handler that attempts reconnection. Log connection status at Information level. Store client as class field for reuse.",
+            "status": "pending",
+            "testStrategy": "Run simulator without HiveMQ running, verify connection retry attempts with backoff logged. Start HiveMQ broker on localhost:1883, verify successful connection. Stop HiveMQ mid-run, verify auto-reconnect triggers. Check client ID format includes GUID in HiveMQ dashboard."
+          },
+          {
+            "id": 3,
+            "title": "Implement telemetry generation and MQTT publish loop with trace context injection",
+            "description": "Create periodic publish loop that generates synthetic MachineReading payloads, creates Activity spans, injects trace context into MQTT User Properties, and publishes to topic",
+            "dependencies": [
+              2
+            ],
+            "details": "In ExecuteAsync after MQTT connection, start infinite loop with Task.Delay using publishInterval from IConfiguration (key: 'Mqtt:PublishIntervalSeconds', default: 5). Generate random MachineReading: MachineId='machine-001', Timestamp=DateTime.UtcNow, Temperature=Random.Shared.NextDouble()*100, Pressure=Random.Shared.NextDouble()*50, Rpm=Random.Shared.NextDouble()*5000. Serialize to JSON using System.Text.Json. Create Activity using ActivitySource.StartActivity('mqtt.publish machines/{machineId}/telemetry', ActivityKind.Producer). Create empty List<MqttUserProperty>, call MqttPropagation.Inject(activity, userProperties). Build MqttApplicationMessage with topic='machines/machine-001/telemetry', payload=UTF8 JSON bytes, UserProperties=userProperties list via .WithUserProperties(). Call client.PublishAsync(message, stoppingToken). Add span attributes: messaging.system='mqtt', messaging.destination='machines/machine-001/telemetry', messaging.operation='publish'. Dispose activity after publish.",
+            "status": "pending",
+            "testStrategy": "Run simulator connected to HiveMQ. Check HiveMQ dashboard for messages on 'machines/machine-001/telemetry' topic. Verify message payload is valid JSON with expected MachineReading fields and random values. Use MQTT client (e.g., MQTT Explorer) to subscribe and inspect User Properties contain traceparent and tracestate headers. Verify publish rate matches configured interval (default 5 seconds)."
+          },
+          {
+            "id": 4,
+            "title": "Configure OpenTelemetry with OTLP exporter and resource attributes in Program.cs",
+            "description": "Set up OpenTelemetry tracing pipeline with Jaeger OTLP exporter, service resource attributes, and ActivitySource registration",
+            "dependencies": [
+              1
+            ],
+            "details": "In Program.cs, read otlpEndpoint from IConfiguration (key: 'OTEL_EXPORTER_OTLP_ENDPOINT', default: 'http://jaeger:4317'). Add builder.Services.AddOpenTelemetry().ConfigureResource(resource => resource.AddService(serviceName: 'machine-simulator', serviceVersion: '1.0.0')).WithTracing(tracing => tracing.AddSource('MachineSimulator.MQTT').AddOtlpExporter(options => { options.Endpoint = new Uri(otlpEndpoint); options.Protocol = OtlpExportProtocol.Grpc; }).AddConsoleExporter()). Ensure OpenTelemetry.Extensions.Hosting and OpenTelemetry.Exporter.OpenTelemetryProtocol packages are referenced (already in csproj).",
+            "status": "pending",
+            "testStrategy": "Start Jaeger container on localhost:4317. Run simulator and verify OpenTelemetry console exporter shows spans being created. Open Jaeger UI at localhost:16686, search for 'machine-simulator' service, verify spans appear with operation name 'mqtt.publish machines/machine-001/telemetry'. Check span attributes include messaging.system, messaging.destination, messaging.operation. Verify service.name='machine-simulator' in resource attributes."
+          },
+          {
+            "id": 5,
+            "title": "Add configuration to appsettings.json and implement graceful shutdown",
+            "description": "Externalize MQTT and OTLP configuration to appsettings.json and implement proper cleanup on CancellationToken cancellation",
+            "dependencies": [
+              3,
+              4
+            ],
+            "details": "Update appsettings.json with sections: 'Mqtt': { 'Host': 'localhost', 'PublishIntervalSeconds': 5 }, 'OTEL_EXPORTER_OTLP_ENDPOINT': 'http://localhost:4317'. In TelemetryPublisher.ExecuteAsync, wrap main loop in try-finally block. In finally block, check if MQTT client is connected and call DisconnectAsync(). Dispose ActivitySource in a class-level Dispose override or using statement. Ensure stoppingToken is passed to Task.Delay and PublishAsync to enable cancellation. Add logging for graceful shutdown: 'Disconnecting MQTT client', 'TelemetryPublisher stopped'. Test shutdown behavior.",
+            "status": "pending",
+            "testStrategy": "Run simulator with configured appsettings.json values. Verify MQTT host and publish interval are read correctly. Send SIGTERM or Ctrl+C, verify graceful shutdown logs appear. Check MQTT client disconnects cleanly (HiveMQ dashboard shows client disconnect). Verify no resource leaks or exceptions during shutdown. Test changing publishIntervalSeconds in config and confirm new interval is used on restart."
+          }
+        ]
       },
       {
-        "id": "11",
+        "id": 11,
         "title": "Create multi-stage Dockerfile for Machine Simulator",
         "description": "Build optimized Docker container for machine-simulator Worker Service with .NET 8 runtime",
         "details": "Create src/MachineSimulator/Dockerfile. Stage 1 (build): FROM mcr.microsoft.com/dotnet/sdk:8.0, WORKDIR /src, COPY MachineSimulator.csproj, RUN dotnet restore, COPY source, RUN dotnet publish -c Release -o /app/publish. Stage 2 (runtime): FROM mcr.microsoft.com/dotnet/runtime:8.0, WORKDIR /app, COPY from build, use non-root user, ENTRYPOINT dotnet MachineSimulator.dll. Image should be <100MB.",
@@ -580,7 +688,7 @@
         "subtasks": []
       },
       {
-        "id": "12",
+        "id": 12,
         "title": "Add Machine Simulator service to docker-compose.yml",
         "description": "Integrate machine-simulator into Docker Compose with HiveMQ and Jaeger dependencies and environment-based configuration",
         "details": "Add 'machine-simulator' service to docker-compose.yml. Set build context './src/MachineSimulator'. Set environment variables: MQTT_HOST=hivemq, MQTT_PORT=1883, PUBLISH_INTERVAL_SECONDS=5, OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317, OTEL_SERVICE_NAME=machine-simulator, OTEL_SERVICE_VERSION=1.0.0, MACHINE_ID=machine-001. Set depends_on: hivemq (service_started), jaeger (service_started). Attach to 'otel-network'. Set restart: unless-stopped. No ports need mapping (outbound client only).",
@@ -593,7 +701,7 @@
         "subtasks": []
       },
       {
-        "id": "13",
+        "id": 13,
         "title": "Create .NET 8 Worker Service project for Orchestrator",
         "description": "Initialize orchestrator Worker Service with MQTTnet, HttpClient, and OpenTelemetry dependencies for MQTT-to-HTTP bridge",
         "details": "Create src/Orchestrator directory. Run 'dotnet new worker -n Orchestrator -f net8.0'. Add NuGet packages: MQTTnet (4.3.6+), MQTTnet.Extensions.ManagedClient (4.3.6+), OpenTelemetry (1.9.0+), OpenTelemetry.Instrumentation.Http (1.9.0+), OpenTelemetry.Exporter.OpenTelemetryProtocol (1.9.0+), Microsoft.Extensions.Http, System.Text.Json. Configure project for Docker. Remove default Worker. Enable nullable reference types.",
@@ -604,10 +712,64 @@
           "12"
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create Orchestrator directory and initialize Worker Service project",
+            "description": "Create src/Orchestrator directory and initialize a new .NET Worker Service project with net10.0 target framework",
+            "dependencies": [],
+            "details": "Create the src/Orchestrator directory. Run 'dotnet new worker -n Orchestrator -f net10.0 -o src/Orchestrator' to scaffold the Worker Service project. This creates the basic project structure with Program.cs, Worker.cs, appsettings.json, and Orchestrator.csproj. The project will use net10.0 to match the MachineSimulator target framework.",
+            "status": "pending",
+            "testStrategy": "Verify the src/Orchestrator directory exists and contains Orchestrator.csproj, Program.cs, Worker.cs, and appsettings.json. Run 'dotnet build src/Orchestrator/Orchestrator.csproj' to ensure the scaffolded project compiles successfully."
+          },
+          {
+            "id": 2,
+            "title": "Configure project properties and enable nullable reference types",
+            "description": "Update Orchestrator.csproj to enable nullable reference types, Docker support, and configure project properties to match MachineSimulator patterns",
+            "dependencies": [
+              1
+            ],
+            "details": "Edit src/Orchestrator/Orchestrator.csproj to add <Nullable>enable</Nullable>, <ImplicitUsings>enable</ImplicitUsings>, and <EnableSdkContainerSupport>true</EnableSdkContainerSupport> to the PropertyGroup. Set TargetFramework to net10.0. These settings match the MachineSimulator project configuration and enable modern C# features with Docker optimization.",
+            "status": "pending",
+            "testStrategy": "Verify Orchestrator.csproj contains the Nullable, ImplicitUsings, and EnableSdkContainerSupport properties. Run 'dotnet build src/Orchestrator/Orchestrator.csproj' to ensure the project builds with nullable reference types enabled without warnings."
+          },
+          {
+            "id": 3,
+            "title": "Add NuGet package references for MQTT, HTTP, and OpenTelemetry",
+            "description": "Install required NuGet packages: MQTTnet 5.0.0.1405, OpenTelemetry packages version 1.15.0, Microsoft.Extensions.Http, and System.Text.Json",
+            "dependencies": [
+              2
+            ],
+            "details": "Add PackageReference items to Orchestrator.csproj for: MQTTnet (5.0.0.1405) for MQTT client, Microsoft.Extensions.Hosting (10.0.3), OpenTelemetry (1.15.0), OpenTelemetry.Exporter.OpenTelemetryProtocol (1.15.0), OpenTelemetry.Extensions.Hosting (1.15.0), OpenTelemetry.Instrumentation.Http (1.15.0) for HttpClient tracing, Microsoft.Extensions.Http for IHttpClientFactory, System.Text.Json for JSON serialization. Do NOT include MQTTnet.Extensions.ManagedClient as MQTTnet v5 does not use ManagedMqttClient. Package versions match MachineSimulator for consistency.",
+            "status": "pending",
+            "testStrategy": "Run 'dotnet restore src/Orchestrator/Orchestrator.csproj' and verify all packages restore successfully without errors. Run 'dotnet build src/Orchestrator/Orchestrator.csproj' to ensure all package dependencies are resolved and the project builds. Check obj/project.assets.json to verify exact package versions installed."
+          },
+          {
+            "id": 4,
+            "title": "Remove default Worker.cs file",
+            "description": "Delete the default Worker.cs file generated by the Worker Service template as it will be replaced with custom MQTT-to-HTTP bridge services",
+            "dependencies": [
+              1
+            ],
+            "details": "Delete src/Orchestrator/Worker.cs file created by the template. The Orchestrator will implement custom hosted services for MQTT subscription and HTTP forwarding instead of using the default Worker class. This matches the pattern used in MachineSimulator where Worker.cs was removed and replaced with TelemetryPublisher service.",
+            "status": "pending",
+            "testStrategy": "Verify Worker.cs file no longer exists in src/Orchestrator directory. Run 'dotnet build src/Orchestrator/Orchestrator.csproj' to ensure the project builds successfully without the Worker.cs file (build may fail if Program.cs still references Worker, but that will be addressed in future tasks)."
+          },
+          {
+            "id": 5,
+            "title": "Add Orchestrator project to solution file",
+            "description": "Add the Orchestrator project to distributed-telemetry-exp.sln and nest it under the src solution folder",
+            "dependencies": [
+              1
+            ],
+            "details": "Run 'dotnet sln distributed-telemetry-exp.sln add src/Orchestrator/Orchestrator.csproj --solution-folder src' to add the Orchestrator project to the solution and nest it under the existing src solution folder (GUID {827E0CD3-B72D-47B6-A68D-7590B98EB39B}). This ensures the project is part of the solution build and follows the same organization pattern as TelemetryApi and MachineSimulator.",
+            "status": "pending",
+            "testStrategy": "Run 'dotnet sln distributed-telemetry-exp.sln list' to verify Orchestrator project appears in the solution under the src folder. Run 'dotnet build distributed-telemetry-exp.sln' to ensure the solution builds successfully with the new project included."
+          }
+        ]
       },
       {
-        "id": "14",
+        "id": 14,
         "title": "Implement MQTT subscriber with trace context extraction in Orchestrator",
         "description": "Create MQTT subscriber service that extracts W3C trace context from User Properties and links parent Activity across the async boundary",
         "details": "Copy MqttUserPropertiesGetter from MachineSimulator or create shared library. Create Services/TelemetryProcessor.cs extending BackgroundService. Create static ActivitySource named 'Orchestrator.MQTT'. Configure managed MQTT client with WithTcpServer(mqttHost, 1883), WithProtocolVersion(V500). Subscribe to topic filter 'machines/+/telemetry' with QoS AtLeastOnce. In message received handler: extract parent context using Propagators.DefaultTextMapPropagator.Extract with MqttUserPropertiesGetter over e.ApplicationMessage.UserProperties. Create Activity named 'mqtt.process machines/{id}/telemetry' with ActivityKind.Consumer and parentContext.ActivityContext as parent. Add attributes: messaging.system='mqtt', messaging.destination=topic, messaging.operation='process'. Deserialize JSON payload to MachineReading. Pass to HTTP client for API forwarding. Dispose Activity when processing complete.",
@@ -617,10 +779,64 @@
           "13"
         ],
         "status": "pending",
-        "subtasks": []
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Duplicate MqttPropagation helper into Orchestrator project",
+            "description": "Copy the MqttPropagation.cs file from MachineSimulator to Orchestrator with namespace change",
+            "dependencies": [],
+            "details": "Create src/Orchestrator/Telemetry/MqttPropagation.cs by duplicating the implementation from src/MachineSimulator/Telemetry/MqttPropagation.cs:1-34. Change namespace from 'MachineSimulator.Telemetry' to 'Orchestrator.Telemetry'. Keep all method signatures and implementation identical: Inject(Activity, List<MqttUserProperty>) and Extract(List<MqttUserProperty>?) methods using Propagators.DefaultTextMapPropagator.",
+            "status": "pending",
+            "testStrategy": "Verify file compiles without errors. Ensure all using directives resolve (System.Diagnostics, MQTTnet.Packets, OpenTelemetry, OpenTelemetry.Context.Propagation). Confirm namespace is Orchestrator.Telemetry."
+          },
+          {
+            "id": 2,
+            "title": "Create MachineReading model in Orchestrator",
+            "description": "Define MachineReading record type to deserialize MQTT message payloads",
+            "dependencies": [],
+            "details": "Create src/Orchestrator/Models/MachineReading.cs with identical structure to MachineSimulator version (src/MachineSimulator/Models/MachineReading.cs:1-9). Define record with properties: MachineId (string), Timestamp (DateTime), Temperature (double), Pressure (double), Rpm (double). Use namespace Orchestrator.Models.",
+            "status": "pending",
+            "testStrategy": "Verify record compiles. Test JSON deserialization with sample payload: {\"MachineId\":\"machine-001\",\"Timestamp\":\"2026-03-27T10:00:00Z\",\"Temperature\":75.5,\"Pressure\":30.2,\"Rpm\":3500}. Verify all properties deserialize correctly."
+          },
+          {
+            "id": 3,
+            "title": "Create TelemetryProcessor BackgroundService skeleton with MQTT connection",
+            "description": "Implement Services/TelemetryProcessor.cs extending BackgroundService with MQTT v5 client initialization and connection logic",
+            "dependencies": [
+              1
+            ],
+            "details": "Create src/Orchestrator/Services/TelemetryProcessor.cs extending BackgroundService. Inject ILogger<TelemetryProcessor> and IConfiguration. Create static ActivitySource named 'Orchestrator.MQTT' version '1.0.0'. In ExecuteAsync, create IMqttClient using new MqttClientFactory().CreateMqttClient(). Configure MqttClientOptionsBuilder with WithTcpServer(mqttHost from config, 1883), WithProtocolVersion(MqttProtocolVersion.V500), WithClientId($\"orchestrator-{Guid.NewGuid()}\"). Implement reconnection logic from TelemetryPublisher.cs:30-48 using DisconnectedAsync event handler. Implement initial connection with retry logic (lines 50-66 pattern). Read mqttHost from configuration[\"Mqtt:Host\"] ?? \"localhost\". Implement graceful shutdown in StopAsync disposing client.",
+            "status": "pending",
+            "testStrategy": "Run Orchestrator with HiveMQ container. Verify logs show 'MQTT connected to localhost'. Test disconnection by stopping HiveMQ, verify reconnection attempt logs. Test graceful shutdown with Ctrl+C, verify clean disconnect."
+          },
+          {
+            "id": 4,
+            "title": "Implement MQTT subscription to machines/+/telemetry topic",
+            "description": "Subscribe to wildcard topic filter with QoS AtLeastOnce and wire up message received event handler",
+            "dependencies": [
+              3
+            ],
+            "details": "After successful MQTT connection in TelemetryProcessor.ExecuteAsync, call _mqttClient.SubscribeAsync with MqttClientSubscribeOptionsBuilder. Configure topic filter 'machines/+/telemetry' with QoS AtLeastOnce. Wire up _mqttClient.ApplicationMessageReceivedAsync event handler (async lambda receiving MqttApplicationMessageReceivedEventArgs e). Log subscription success with topic filter. In message handler, log received message with topic e.ApplicationMessage.Topic. Add try-catch around handler to prevent unhandled exceptions. Use logger.LogError for any exceptions.",
+            "status": "pending",
+            "testStrategy": "Run Orchestrator with MachineSimulator publishing. Verify logs show 'Subscribed to machines/+/telemetry'. Confirm message received logs appear with topic 'machines/machine-001/telemetry'. Verify wildcard matching by publishing to machines/machine-002/telemetry."
+          },
+          {
+            "id": 5,
+            "title": "Extract trace context and create linked Consumer Activity in message handler",
+            "description": "Implement W3C trace context extraction from MQTT User Properties and create child Activity with proper parent linking",
+            "dependencies": [
+              1,
+              2,
+              4
+            ],
+            "details": "In ApplicationMessageReceivedAsync handler, extract parent context using MqttPropagation.Extract(e.ApplicationMessage.UserProperties). Create Activity using ActivitySource.StartActivity with name 'mqtt.process ' + e.ApplicationMessage.Topic, ActivityKind.Consumer, and parentContext: parentContext.ActivityContext. Set attributes: messaging.system='mqtt', messaging.destination=e.ApplicationMessage.Topic, messaging.operation='process'. Deserialize e.ApplicationMessage.PayloadSegment using JsonSerializer.Deserialize<MachineReading>(). Log deserialized reading with machine ID and values. Wrap Activity in using statement for automatic disposal. Log extracted TraceId and SpanId at debug level. For now, just log the deserialized MachineReading (HTTP forwarding is Task 15).",
+            "status": "pending",
+            "testStrategy": "Run full stack: Jaeger, HiveMQ, TelemetryApi, MachineSimulator, Orchestrator. In Jaeger UI, find trace starting from MachineSimulator 'mqtt.publish' span. Verify Orchestrator 'mqtt.process machines/machine-001/telemetry' span appears as child with matching TraceId. Verify parent-child relationship shows in trace timeline. Check span attributes match OTel semantic conventions. Verify MachineReading deserialization in logs."
+          }
+        ]
       },
       {
-        "id": "15",
+        "id": 15,
         "title": "Implement typed HttpClient for API communication with auto-instrumentation",
         "description": "Configure HttpClient factory with OpenTelemetry instrumentation to forward telemetry data to API service",
         "details": "In Program.cs, register typed HttpClient: builder.Services.AddHttpClient<ITelemetryApiClient, TelemetryApiClient>(client => { client.BaseAddress = new Uri(apiBaseUrl); client.DefaultRequestHeaders.Add('Accept', 'application/json'); }). Create Clients/TelemetryApiClient.cs with PostReadingAsync method accepting MachineReading, serializing to JSON, POSTing to '/api/readings'. Configure OpenTelemetry tracing with .WithTracing(builder => builder.AddHttpClientInstrumentation().AddOtlpExporter()). Set ResourceBuilder with service.name='orchestrator'. HttpClient spans automatically created by OTel instrumentation and linked to parent MQTT processing Activity.",
@@ -633,7 +849,7 @@
         "subtasks": []
       },
       {
-        "id": "16",
+        "id": 16,
         "title": "Create multi-stage Dockerfile for Orchestrator",
         "description": "Build optimized Docker image for orchestrator Worker Service with .NET 8 runtime",
         "details": "Create src/Orchestrator/Dockerfile using same pattern as MachineSimulator. Build stage with SDK, restore, publish. Runtime stage with runtime:8.0 base, copy artifacts, non-root user, ENTRYPOINT dotnet Orchestrator.dll. Optimize layer caching by copying .csproj first.",
@@ -646,7 +862,7 @@
         "subtasks": []
       },
       {
-        "id": "17",
+        "id": 17,
         "title": "Add Orchestrator service to docker-compose.yml with healthcheck dependencies",
         "description": "Integrate orchestrator into Docker Compose with explicit service_healthy dependencies on API and HiveMQ",
         "details": "Add 'orchestrator' service to docker-compose.yml. Set build context './src/Orchestrator'. Environment variables: MQTT_HOST=hivemq, MQTT_PORT=1883, API_BASE_URL=http://api:8080, OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317, OTEL_SERVICE_NAME=orchestrator, OTEL_SERVICE_VERSION=1.0.0. Critical: set depends_on with api (condition: service_healthy), hivemq (condition: service_healthy), jaeger (service_started). This ensures orchestrator only starts after API and HiveMQ healthchecks pass. Attach to 'otel-network'. Restart: unless-stopped.",
@@ -659,7 +875,7 @@
         "subtasks": []
       },
       {
-        "id": "18",
+        "id": 18,
         "title": "Implement environment-based configuration for all services",
         "description": "Externalize all configuration via environment variables and appsettings.json with production-ready defaults",
         "details": "For each project (API, MachineSimulator, Orchestrator), create appsettings.json and appsettings.Development.json. API: configure LiteDB path, OTLP endpoint, Kestrel URLs. MachineSimulator: MQTT host/port, publish interval, machine ID, OTLP endpoint. Orchestrator: MQTT host/port, API base URL, OTLP endpoint. Use IConfiguration in each service to read settings with fallbacks. Update docker-compose.yml to override via environment block. Create .env.example file documenting all available environment variables with descriptions and defaults. Add configuration validation on startup logging actual values used (excluding secrets).",
@@ -672,7 +888,7 @@
         "subtasks": []
       },
       {
-        "id": "19",
+        "id": 19,
         "title": "Add structured logging with trace correlation across all services",
         "description": "Configure Microsoft.Extensions.Logging with trace ID correlation and structured output for debugging and production monitoring",
         "details": "In each service Program.cs, configure logging: builder.Logging.ClearProviders().AddConsole().AddJsonConsole(options => options.IncludeScopes = true). In API, add middleware to inject TraceId into log scope using Activity.Current?.TraceId. In Worker Services, log TraceId in message handlers. Use structured logging with message templates: _logger.LogInformation('Processing message for {MachineId} with TraceId {TraceId}', machineId, Activity.Current?.TraceId). Configure minimum log levels via appsettings.json: Information for production, Debug for development. Add correlation ID to HTTP response headers in API.",
@@ -685,7 +901,7 @@
         "subtasks": []
       },
       {
-        "id": "20",
+        "id": 20,
         "title": "Implement graceful shutdown with CancellationToken propagation",
         "description": "Add proper shutdown handling in all Worker Services to ensure clean MQTT disconnection and activity disposal",
         "details": "In MachineSimulator TelemetryPublisher.ExecuteAsync, pass stoppingToken to Task.Delay and MQTT client operations. On cancellation, disconnect MQTT client gracefully, dispose ActivitySource. In Orchestrator TelemetryProcessor, on shutdown unsubscribe from MQTT topics, disconnect client, dispose HttpClient and ActivitySource. Add try-catch-finally blocks ensuring cleanup. Configure WorkerOptions in Program.cs with ShutdownTimeout = TimeSpan.FromSeconds(30). Test with docker-compose stop and verify logs show 'Application is shutting down' and clean disconnection messages.",
@@ -698,7 +914,7 @@
         "subtasks": []
       },
       {
-        "id": "21",
+        "id": 21,
         "title": "Add docker-compose.override.yml for local development",
         "description": "Create override file enabling volume mounts for hot reload and local debugging with source code",
         "details": "Create docker-compose.override.yml. For api service: mount './src/TelemetryApi:/app' as volume, set ASPNETCORE_ENVIRONMENT=Development, add port mapping for debugger 5001:5001. For machine-simulator and orchestrator: mount source directories, set Development environment. Add comments explaining override purpose. Document in README that override is automatically applied with docker-compose up. Add .dockerignore files in each project excluding bin/, obj/, .git/ to optimize build context.",
@@ -711,7 +927,7 @@
         "subtasks": []
       },
       {
-        "id": "22",
+        "id": 22,
         "title": "Finalize docker-compose.yml with resource limits and restart policies",
         "description": "Add production-ready resource constraints, restart policies, and named volumes to docker-compose.yml",
         "details": "For each service in docker-compose.yml, add deploy.resources.limits: memory: 512M (1G for Jaeger), cpus: '0.5'. Set restart: unless-stopped for all services. Create named volumes: litedb-data (already exists), jaeger-data (if using Badger storage). Add labels for documentation: 'com.example.description', 'com.example.version'. Configure networks section explicitly with 'otel-network' bridge driver, enable_ipv6: false. Add container_name for each service for easier reference. Review all healthchecks are present and tuned appropriately.",
@@ -724,7 +940,7 @@
         "subtasks": []
       },
       {
-        "id": "23",
+        "id": 23,
         "title": "Create comprehensive README.md with setup and validation instructions",
         "description": "Write complete documentation covering architecture, setup, validation steps, Jaeger navigation, and troubleshooting",
         "details": "Create README.md with sections: Overview (project purpose and architecture diagram reference), Prerequisites (Docker, Compose version requirements), Quick Start (docker-compose up single command), Architecture (service descriptions, data flow, trace flow diagrams), Validation Steps (how to verify each component working: Jaeger UI, HiveMQ, API endpoints, end-to-end trace), Jaeger UI Navigation (how to find traces, interpret span waterfall, inspect attributes), Expected Trace Structure (annotated description of full trace with all spans and attributes), Configuration (environment variables table), Troubleshooting (common issues: port conflicts, MQTT version, OTLP connection failures), Development (how to use override, rebuild, local debugging), Technology Stack (table of libraries and versions), Future Enhancements (Phase 6 items). Include annotated curl commands for testing API. Add screenshots or ASCII diagrams of expected Jaeger trace.",
@@ -737,7 +953,7 @@
         "subtasks": []
       },
       {
-        "id": "24",
+        "id": 24,
         "title": "Create unit tests for MQTT trace context propagation helpers",
         "description": "Write comprehensive unit tests validating W3C TraceContext injection and extraction correctness",
         "details": "Create test projects: MachineSimulator.Tests, Orchestrator.Tests. Add xunit, FluentAssertions, Moq packages. Test MqttUserPropertiesSetter: create Activity with known TraceId and SpanId, inject into empty list, assert traceparent format matches spec, verify tracestate if present. Test MqttUserPropertiesGetter: populate list with valid traceparent, extract, assert ActivityContext has correct TraceId/SpanId/TraceFlags. Test edge cases: missing traceparent (returns default context), malformed traceparent (returns default), multiple traceparent values (uses first). Test baggage propagation if used. Achieve >90% code coverage for propagation helpers.",
@@ -750,7 +966,7 @@
         "subtasks": []
       },
       {
-        "id": "25",
+        "id": 25,
         "title": "Add integration test validating end-to-end trace propagation",
         "description": "Create automated integration test that verifies complete trace chain from simulator through orchestrator to API appears as single trace in Jaeger",
         "details": "Create IntegrationTests project with docker-compose test profile. Use TestContainers or Docker.DotNet to manage test environment lifecycle. Test scenario: start all services, wait for healthy state, trigger simulator publish (or inject test message), wait for API persistence, query Jaeger API (http://localhost:16686/api/traces) searching for traces with service 'machine-simulator', find most recent trace, validate trace structure: root span is publish span with service=machine-simulator, child span is process span with service=orchestrator, grandchild is HTTP client span, great-grandchild is ASP.NET Core span with service=telemetry-api, great-great-grandchild is LiteDB span. Assert all spans share same TraceId. Assert parent-child relationships correct using span.references. Validate span attributes present (messaging.*, db.*, http.*).",
@@ -764,7 +980,7 @@
         "subtasks": []
       },
       {
-        "id": "26",
+        "id": 26,
         "title": "Replace HealthController with ASP.NET Core Health Checks",
         "description": "Remove the custom HealthController and replace it with the built-in ASP.NET Core Health Checks framework",
         "details": "Remove src/TelemetryApi/Controllers/HealthController.cs. In Program.cs, add builder.Services.AddHealthChecks() and register any relevant checks (e.g., a custom LiteDB connectivity check). Map the health endpoint with app.MapHealthChecks(\"/health\"). Optionally configure a custom response writer using HealthCheckOptions to return a JSON payload matching the existing response shape: { status, timestamp, service, version }. The LiteDB health check should attempt a lightweight query to verify the database is accessible.",
@@ -784,7 +1000,9 @@
       "completedCount": 8,
       "tags": [
         "master"
-      ]
+      ],
+      "created": "2026-03-27T17:45:32.941Z",
+      "description": "Tasks for master context"
     }
   }
 }
