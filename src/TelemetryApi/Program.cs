@@ -32,6 +32,11 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
+var startupLogger = app.Services.GetRequiredService<ILogger<Program>>();
+startupLogger.LogInformation("TelemetryApi starting — LiteDb={LiteDb}, OTLP={Otlp}",
+    app.Configuration["LiteDb:ConnectionString"],
+    otlpEndpoint);
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

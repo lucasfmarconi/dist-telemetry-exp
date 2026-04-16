@@ -560,7 +560,7 @@
         "dependencies": [
           "8"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -568,9 +568,10 @@
             "description": "Implement the setter class that will inject W3C TraceContext headers into MQTT 5.0 User Properties for distributed tracing propagation",
             "dependencies": [],
             "details": "Create src/MachineSimulator/Telemetry/MqttUserPropertiesSetter.cs implementing Action<List<MqttUserProperty>, string, string> signature. The implementation should add new MqttUserProperty(key, value) to the list for each header (traceparent, tracestate). Place this in a new Telemetry folder under MachineSimulator project to mirror the TelemetryInstrumentation structure in TelemetryApi. Use the namespace MachineSimulator.Telemetry. The setter will be used with Propagators.DefaultTextMapPropagator.Inject() to inject context into MQTT messages.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test will create mock Activity with known TraceId/SpanId, inject into empty List<MqttUserProperty>, verify traceparent header exists with correct W3C format '00-<32-hex-traceid>-<16-hex-spanid>-<2-hex-flags>'",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:16:55.014Z"
           },
           {
             "id": 2,
@@ -578,9 +579,10 @@
             "description": "Implement the getter class that will extract W3C TraceContext headers from MQTT 5.0 User Properties to restore parent trace context",
             "dependencies": [],
             "details": "Create src/MachineSimulator/Telemetry/MqttUserPropertiesGetter.cs implementing Func<List<MqttUserProperty>, string, IEnumerable<string>> signature. The implementation should return props.Where(p => p.Name == key).Select(p => p.Value) to extract all values matching the requested header key. This handles both traceparent and tracestate headers. Use the namespace MachineSimulator.Telemetry. The getter will be used with Propagators.DefaultTextMapPropagator.Extract() to restore parent context from incoming MQTT messages.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Unit test will pre-populate List<MqttUserProperty> with valid traceparent/tracestate values, extract using the getter, verify correct parent context is restored and Activity.Current has expected TraceId and ParentSpanId",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:16:55.018Z"
           },
           {
             "id": 3,
@@ -591,9 +593,10 @@
               2
             ],
             "details": "Create test/MachineSimulator.Tests/MachineSimulator.Tests.csproj using 'dotnet new xunit' targeting net10.0. Add PackageReferences: OpenTelemetry 1.15.0, MQTTnet 5.0.0.1405, xunit 2.9.3, xunit.runner.visualstudio 3.0.1, Microsoft.NET.Test.Sdk 17.13.0. Add project reference to MachineSimulator.csproj. Add test project to distributed-telemetry-exp.sln. Create test/MachineSimulator.Tests directory structure following .NET conventions.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run 'dotnet test' to verify test project builds and discovers tests. Verify project reference resolves correctly and can access MachineSimulator.Telemetry namespace.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:16:55.021Z"
           },
           {
             "id": 4,
@@ -603,9 +606,10 @@
               3
             ],
             "details": "Create test/MachineSimulator.Tests/Telemetry/MqttUserPropertiesSetterTests.cs. Test cases: (1) Inject_WithActiveActivity_AddsTraceparentHeader - create Activity with known TraceId/SpanId, inject into empty list, assert traceparent format matches '00-{traceId}-{spanId}-{flags}' with correct hex lengths. (2) Inject_WithTraceState_AddsTracestateHeader - create Activity with TraceStateString, verify tracestate property added. (3) Inject_WithoutActivity_DoesNotAddHeaders - inject with Activity.Current = null, verify list remains empty. Use Propagators.DefaultTextMapPropagator for injection following OpenTelemetry SDK patterns from TelemetryApi.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run 'dotnet test --filter MqttUserPropertiesSetterTests' and verify all test cases pass. Validate traceparent format using regex pattern '^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$'. Check test coverage includes happy path and edge cases.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:16:55.023Z"
           },
           {
             "id": 5,
@@ -615,11 +619,13 @@
               3
             ],
             "details": "Create test/MachineSimulator.Tests/Telemetry/MqttUserPropertiesGetterTests.cs. Test cases: (1) Extract_WithValidTraceparent_RestoresParentContext - populate list with valid traceparent MqttUserProperty, extract using Propagators.DefaultTextMapPropagator.Extract, start new Activity, verify Activity.ParentId matches extracted context. (2) Extract_WithMultipleValues_ReturnsAll - add multiple properties with same key, verify getter returns all values as IEnumerable. (3) Extract_WithMissingHeaders_ReturnsEmpty - extract from empty list, verify no exception and empty result. (4) Extract_WithInvalidFormat_HandlesGracefully - add malformed traceparent, verify extraction doesn't throw exception.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run 'dotnet test --filter MqttUserPropertiesGetterTests' and verify all test cases pass. Validate end-to-end: inject context with setter, extract with getter, verify TraceId/ParentSpanId propagated correctly. Test round-trip compatibility with W3C TraceContext spec.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:16:55.025Z"
           }
-        ]
+        ],
+        "updatedAt": "2026-04-16T13:16:55.025Z"
       },
       {
         "id": "10",
@@ -631,7 +637,7 @@
         "dependencies": [
           "9"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -639,9 +645,10 @@
             "description": "Define local MachineReading payload model and create TelemetryPublisher BackgroundService scaffolding with dependency injection setup",
             "dependencies": [],
             "details": "Create Models/MachineReading.cs as a simple record with properties: MachineId (string), Timestamp (DateTime), Temperature (double), Pressure (double), Rpm (double). Create Services/TelemetryPublisher.cs extending BackgroundService. Inject ILogger<TelemetryPublisher> and IConfiguration. Create static ActivitySource field named 'MachineSimulator.MQTT'. Override ExecuteAsync method with CancellationToken parameter. Register TelemetryPublisher as hosted service in Program.cs using builder.Services.AddHostedService<TelemetryPublisher>(). Remove existing Worker.cs registration.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify project compiles without errors. Run the simulator and confirm TelemetryPublisher service starts and logs initialization. Check that Worker.cs is no longer registered and TelemetryPublisher is the active BackgroundService.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:18:08.591Z"
           },
           {
             "id": 2,
@@ -651,9 +658,10 @@
               1
             ],
             "details": "In TelemetryPublisher.ExecuteAsync, read mqttHost from IConfiguration (key: 'Mqtt:Host', default: 'localhost'). Use MqttClientFactory to create IMqttClient. Build MqttClientOptions using MqttClientOptionsBuilder with .WithTcpServer(mqttHost, 1883), .WithProtocolVersion(MqttProtocolVersion.V500), .WithClientId($'machine-simulator-{Guid.NewGuid()}'). Implement try-catch around ConnectAsync with retry loop (exponential backoff, max 5 retries). Add DisconnectedAsync event handler that attempts reconnection. Log connection status at Information level. Store client as class field for reuse.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run simulator without HiveMQ running, verify connection retry attempts with backoff logged. Start HiveMQ broker on localhost:1883, verify successful connection. Stop HiveMQ mid-run, verify auto-reconnect triggers. Check client ID format includes GUID in HiveMQ dashboard.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:18:08.598Z"
           },
           {
             "id": 3,
@@ -663,9 +671,10 @@
               2
             ],
             "details": "In ExecuteAsync after MQTT connection, start infinite loop with Task.Delay using publishInterval from IConfiguration (key: 'Mqtt:PublishIntervalSeconds', default: 5). Generate random MachineReading: MachineId='machine-001', Timestamp=DateTime.UtcNow, Temperature=Random.Shared.NextDouble()*100, Pressure=Random.Shared.NextDouble()*50, Rpm=Random.Shared.NextDouble()*5000. Serialize to JSON using System.Text.Json. Create Activity using ActivitySource.StartActivity('mqtt.publish machines/{machineId}/telemetry', ActivityKind.Producer). Create empty List<MqttUserProperty>, call MqttPropagation.Inject(activity, userProperties). Build MqttApplicationMessage with topic='machines/machine-001/telemetry', payload=UTF8 JSON bytes, UserProperties=userProperties list via .WithUserProperties(). Call client.PublishAsync(message, stoppingToken). Add span attributes: messaging.system='mqtt', messaging.destination='machines/machine-001/telemetry', messaging.operation='publish'. Dispose activity after publish.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run simulator connected to HiveMQ. Check HiveMQ dashboard for messages on 'machines/machine-001/telemetry' topic. Verify message payload is valid JSON with expected MachineReading fields and random values. Use MQTT client (e.g., MQTT Explorer) to subscribe and inspect User Properties contain traceparent and tracestate headers. Verify publish rate matches configured interval (default 5 seconds).",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:18:08.601Z"
           },
           {
             "id": 4,
@@ -675,9 +684,10 @@
               1
             ],
             "details": "In Program.cs, read otlpEndpoint from IConfiguration (key: 'OTEL_EXPORTER_OTLP_ENDPOINT', default: 'http://jaeger:4317'). Add builder.Services.AddOpenTelemetry().ConfigureResource(resource => resource.AddService(serviceName: 'machine-simulator', serviceVersion: '1.0.0')).WithTracing(tracing => tracing.AddSource('MachineSimulator.MQTT').AddOtlpExporter(options => { options.Endpoint = new Uri(otlpEndpoint); options.Protocol = OtlpExportProtocol.Grpc; }).AddConsoleExporter()). Ensure OpenTelemetry.Extensions.Hosting and OpenTelemetry.Exporter.OpenTelemetryProtocol packages are referenced (already in csproj).",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Start Jaeger container on localhost:4317. Run simulator and verify OpenTelemetry console exporter shows spans being created. Open Jaeger UI at localhost:16686, search for 'machine-simulator' service, verify spans appear with operation name 'mqtt.publish machines/machine-001/telemetry'. Check span attributes include messaging.system, messaging.destination, messaging.operation. Verify service.name='machine-simulator' in resource attributes.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:18:08.603Z"
           },
           {
             "id": 5,
@@ -688,11 +698,13 @@
               4
             ],
             "details": "Update appsettings.json with sections: 'Mqtt': { 'Host': 'localhost', 'PublishIntervalSeconds': 5 }, 'OTEL_EXPORTER_OTLP_ENDPOINT': 'http://localhost:4317'. In TelemetryPublisher.ExecuteAsync, wrap main loop in try-finally block. In finally block, check if MQTT client is connected and call DisconnectAsync(). Dispose ActivitySource in a class-level Dispose override or using statement. Ensure stoppingToken is passed to Task.Delay and PublishAsync to enable cancellation. Add logging for graceful shutdown: 'Disconnecting MQTT client', 'TelemetryPublisher stopped'. Test shutdown behavior.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run simulator with configured appsettings.json values. Verify MQTT host and publish interval are read correctly. Send SIGTERM or Ctrl+C, verify graceful shutdown logs appear. Check MQTT client disconnects cleanly (HiveMQ dashboard shows client disconnect). Verify no resource leaks or exceptions during shutdown. Test changing publishIntervalSeconds in config and confirm new interval is used on restart.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:18:08.605Z"
           }
-        ]
+        ],
+        "updatedAt": "2026-04-16T13:18:08.605Z"
       },
       {
         "id": "11",
@@ -704,8 +716,9 @@
         "dependencies": [
           "10"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-16T13:19:11.139Z"
       },
       {
         "id": "12",
@@ -717,8 +730,9 @@
         "dependencies": [
           "11"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-16T13:19:26.202Z"
       },
       {
         "id": "13",
@@ -731,7 +745,7 @@
           "7",
           "12"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -739,9 +753,10 @@
             "description": "Create src/Orchestrator directory and initialize a new .NET Worker Service project with net10.0 target framework",
             "dependencies": [],
             "details": "Create the src/Orchestrator directory. Run 'dotnet new worker -n Orchestrator -f net10.0 -o src/Orchestrator' to scaffold the Worker Service project. This creates the basic project structure with Program.cs, Worker.cs, appsettings.json, and Orchestrator.csproj. The project will use net10.0 to match the MachineSimulator target framework.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify the src/Orchestrator directory exists and contains Orchestrator.csproj, Program.cs, Worker.cs, and appsettings.json. Run 'dotnet build src/Orchestrator/Orchestrator.csproj' to ensure the scaffolded project compiles successfully.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:19:44.049Z"
           },
           {
             "id": 2,
@@ -751,9 +766,10 @@
               1
             ],
             "details": "Edit src/Orchestrator/Orchestrator.csproj to add <Nullable>enable</Nullable>, <ImplicitUsings>enable</ImplicitUsings>, and <EnableSdkContainerSupport>true</EnableSdkContainerSupport> to the PropertyGroup. Set TargetFramework to net10.0. These settings match the MachineSimulator project configuration and enable modern C# features with Docker optimization.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify Orchestrator.csproj contains the Nullable, ImplicitUsings, and EnableSdkContainerSupport properties. Run 'dotnet build src/Orchestrator/Orchestrator.csproj' to ensure the project builds with nullable reference types enabled without warnings.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:19:44.052Z"
           },
           {
             "id": 3,
@@ -763,9 +779,10 @@
               2
             ],
             "details": "Add PackageReference items to Orchestrator.csproj for: MQTTnet (5.0.0.1405) for MQTT client, Microsoft.Extensions.Hosting (10.0.3), OpenTelemetry (1.15.0), OpenTelemetry.Exporter.OpenTelemetryProtocol (1.15.0), OpenTelemetry.Extensions.Hosting (1.15.0), OpenTelemetry.Instrumentation.Http (1.15.0) for HttpClient tracing, Microsoft.Extensions.Http for IHttpClientFactory, System.Text.Json for JSON serialization. Do NOT include MQTTnet.Extensions.ManagedClient as MQTTnet v5 does not use ManagedMqttClient. Package versions match MachineSimulator for consistency.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run 'dotnet restore src/Orchestrator/Orchestrator.csproj' and verify all packages restore successfully without errors. Run 'dotnet build src/Orchestrator/Orchestrator.csproj' to ensure all package dependencies are resolved and the project builds. Check obj/project.assets.json to verify exact package versions installed.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:19:44.054Z"
           },
           {
             "id": 4,
@@ -775,9 +792,10 @@
               1
             ],
             "details": "Delete src/Orchestrator/Worker.cs file created by the template. The Orchestrator will implement custom hosted services for MQTT subscription and HTTP forwarding instead of using the default Worker class. This matches the pattern used in MachineSimulator where Worker.cs was removed and replaced with TelemetryPublisher service.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify Worker.cs file no longer exists in src/Orchestrator directory. Run 'dotnet build src/Orchestrator/Orchestrator.csproj' to ensure the project builds successfully without the Worker.cs file (build may fail if Program.cs still references Worker, but that will be addressed in future tasks).",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:19:44.056Z"
           },
           {
             "id": 5,
@@ -787,11 +805,13 @@
               1
             ],
             "details": "Run 'dotnet sln distributed-telemetry-exp.sln add src/Orchestrator/Orchestrator.csproj --solution-folder src' to add the Orchestrator project to the solution and nest it under the existing src solution folder (GUID {827E0CD3-B72D-47B6-A68D-7590B98EB39B}). This ensures the project is part of the solution build and follows the same organization pattern as TelemetryApi and MachineSimulator.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run 'dotnet sln distributed-telemetry-exp.sln list' to verify Orchestrator project appears in the solution under the src folder. Run 'dotnet build distributed-telemetry-exp.sln' to ensure the solution builds successfully with the new project included.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:19:44.059Z"
           }
-        ]
+        ],
+        "updatedAt": "2026-04-16T13:19:44.059Z"
       },
       {
         "id": "14",
@@ -803,7 +823,7 @@
         "dependencies": [
           "13"
         ],
-        "status": "pending",
+        "status": "done",
         "subtasks": [
           {
             "id": 1,
@@ -811,9 +831,10 @@
             "description": "Copy the MqttPropagation.cs file from MachineSimulator to Orchestrator with namespace change",
             "dependencies": [],
             "details": "Create src/Orchestrator/Telemetry/MqttPropagation.cs by duplicating the implementation from src/MachineSimulator/Telemetry/MqttPropagation.cs:1-34. Change namespace from 'MachineSimulator.Telemetry' to 'Orchestrator.Telemetry'. Keep all method signatures and implementation identical: Inject(Activity, List<MqttUserProperty>) and Extract(List<MqttUserProperty>?) methods using Propagators.DefaultTextMapPropagator.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify file compiles without errors. Ensure all using directives resolve (System.Diagnostics, MQTTnet.Packets, OpenTelemetry, OpenTelemetry.Context.Propagation). Confirm namespace is Orchestrator.Telemetry.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:20:13.443Z"
           },
           {
             "id": 2,
@@ -821,9 +842,10 @@
             "description": "Define MachineReading record type to deserialize MQTT message payloads",
             "dependencies": [],
             "details": "Create src/Orchestrator/Models/MachineReading.cs with identical structure to MachineSimulator version (src/MachineSimulator/Models/MachineReading.cs:1-9). Define record with properties: MachineId (string), Timestamp (DateTime), Temperature (double), Pressure (double), Rpm (double). Use namespace Orchestrator.Models.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Verify record compiles. Test JSON deserialization with sample payload: {\"MachineId\":\"machine-001\",\"Timestamp\":\"2026-03-27T10:00:00Z\",\"Temperature\":75.5,\"Pressure\":30.2,\"Rpm\":3500}. Verify all properties deserialize correctly.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:20:13.445Z"
           },
           {
             "id": 3,
@@ -833,9 +855,10 @@
               1
             ],
             "details": "Create src/Orchestrator/Services/TelemetryProcessor.cs extending BackgroundService. Inject ILogger<TelemetryProcessor> and IConfiguration. Create static ActivitySource named 'Orchestrator.MQTT' version '1.0.0'. In ExecuteAsync, create IMqttClient using new MqttClientFactory().CreateMqttClient(). Configure MqttClientOptionsBuilder with WithTcpServer(mqttHost from config, 1883), WithProtocolVersion(MqttProtocolVersion.V500), WithClientId($\"orchestrator-{Guid.NewGuid()}\"). Implement reconnection logic from TelemetryPublisher.cs:30-48 using DisconnectedAsync event handler. Implement initial connection with retry logic (lines 50-66 pattern). Read mqttHost from configuration[\"Mqtt:Host\"] ?? \"localhost\". Implement graceful shutdown in StopAsync disposing client.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run Orchestrator with HiveMQ container. Verify logs show 'MQTT connected to localhost'. Test disconnection by stopping HiveMQ, verify reconnection attempt logs. Test graceful shutdown with Ctrl+C, verify clean disconnect.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:20:13.449Z"
           },
           {
             "id": 4,
@@ -845,9 +868,10 @@
               3
             ],
             "details": "After successful MQTT connection in TelemetryProcessor.ExecuteAsync, call _mqttClient.SubscribeAsync with MqttClientSubscribeOptionsBuilder. Configure topic filter 'machines/+/telemetry' with QoS AtLeastOnce. Wire up _mqttClient.ApplicationMessageReceivedAsync event handler (async lambda receiving MqttApplicationMessageReceivedEventArgs e). Log subscription success with topic filter. In message handler, log received message with topic e.ApplicationMessage.Topic. Add try-catch around handler to prevent unhandled exceptions. Use logger.LogError for any exceptions.",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run Orchestrator with MachineSimulator publishing. Verify logs show 'Subscribed to machines/+/telemetry'. Confirm message received logs appear with topic 'machines/machine-001/telemetry'. Verify wildcard matching by publishing to machines/machine-002/telemetry.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:20:13.452Z"
           },
           {
             "id": 5,
@@ -859,11 +883,13 @@
               4
             ],
             "details": "In ApplicationMessageReceivedAsync handler, extract parent context using MqttPropagation.Extract(e.ApplicationMessage.UserProperties). Create Activity using ActivitySource.StartActivity with name 'mqtt.process ' + e.ApplicationMessage.Topic, ActivityKind.Consumer, and parentContext: parentContext.ActivityContext. Set attributes: messaging.system='mqtt', messaging.destination=e.ApplicationMessage.Topic, messaging.operation='process'. Deserialize e.ApplicationMessage.PayloadSegment using JsonSerializer.Deserialize<MachineReading>(). Log deserialized reading with machine ID and values. Wrap Activity in using statement for automatic disposal. Log extracted TraceId and SpanId at debug level. For now, just log the deserialized MachineReading (HTTP forwarding is Task 15).",
-            "status": "pending",
+            "status": "done",
             "testStrategy": "Run full stack: Jaeger, HiveMQ, TelemetryApi, MachineSimulator, Orchestrator. In Jaeger UI, find trace starting from MachineSimulator 'mqtt.publish' span. Verify Orchestrator 'mqtt.process machines/machine-001/telemetry' span appears as child with matching TraceId. Verify parent-child relationship shows in trace timeline. Check span attributes match OTel semantic conventions. Verify MachineReading deserialization in logs.",
-            "parentId": "undefined"
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:20:13.454Z"
           }
-        ]
+        ],
+        "updatedAt": "2026-04-16T13:20:13.454Z"
       },
       {
         "id": "15",
@@ -875,8 +901,71 @@
         "dependencies": [
           "14"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Create ITelemetryApiClient interface and TelemetryApiClient implementation",
+            "description": "Create Clients/ITelemetryApiClient.cs interface and Clients/TelemetryApiClient.cs typed HttpClient implementation with PostReadingAsync method",
+            "dependencies": [],
+            "details": "Create src/Orchestrator/Clients/ directory. Define ITelemetryApiClient interface with Task<HttpResponseMessage> PostReadingAsync(MachineReading reading, CancellationToken ct). Implement TelemetryApiClient class with constructor accepting HttpClient and ILogger. In PostReadingAsync: transform Orchestrator.Models.MachineReading (Temperature, Pressure, Rpm) into three separate API MachineReading objects (Metric='Temperature', Value=reading.Temperature, Unit='C'), serialize to JSON with JsonSerializer, POST to '/api/readings' endpoint, return response. Include Activity.Current?.Id as TraceId in payload.",
+            "status": "done",
+            "testStrategy": "Unit test TelemetryApiClient with mocked HttpClient using HttpMessageHandler. Verify JSON payload structure, endpoint URL '/api/readings', Accept header 'application/json'. Verify three POST requests generated per MachineReading (one per metric). Mock successful 201 response and verify method completes without exceptions.",
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:29:16.339Z"
+          },
+          {
+            "id": 2,
+            "title": "Configure OpenTelemetry with HttpClient instrumentation and OTLP exporter in Program.cs",
+            "description": "Add OpenTelemetry tracing pipeline to Program.cs with HttpClient instrumentation, ActivitySource registration, and OTLP exporter configuration",
+            "dependencies": [],
+            "details": "In Program.cs, add builder.Services.AddOpenTelemetry().WithTracing(tracerProvider => tracerProvider.AddSource('Orchestrator.MQTT').AddHttpClientInstrumentation().AddOtlpExporter(options => { options.Endpoint = new Uri(builder.Configuration['Otel:OtlpEndpoint'] ?? 'http://localhost:4317'); })).ConfigureResource(resource => resource.AddService('orchestrator', serviceVersion: '1.0.0')). This enables automatic span creation for all HttpClient requests with parent-child linking to MQTT processing Activity from TelemetryProcessor line 58.",
+            "status": "done",
+            "testStrategy": "Run orchestrator with Jaeger backend. Verify 'orchestrator' service appears in Jaeger UI. Create test that triggers HTTP request, verify span named 'HTTP POST' appears as child of parent Activity. Check span attributes include http.method=POST, http.url, http.status_code. Verify OTLP exporter connects to configured endpoint without errors in logs.",
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:29:16.345Z"
+          },
+          {
+            "id": 3,
+            "title": "Register typed HttpClient with base address and default headers in Program.cs",
+            "description": "Configure HttpClient factory in Program.cs to register TelemetryApiClient with base address from configuration and Accept header",
+            "dependencies": [
+              1
+            ],
+            "details": "In Program.cs after OpenTelemetry setup, add: var apiBaseUrl = builder.Configuration['Api:BaseUrl'] ?? 'http://localhost:5000'; builder.Services.AddHttpClient<ITelemetryApiClient, TelemetryApiClient>(client => { client.BaseAddress = new Uri(apiBaseUrl); client.DefaultRequestHeaders.Add('Accept', 'application/json'); client.Timeout = TimeSpan.FromSeconds(30); }). This registers typed client with DI, enabling constructor injection into TelemetryProcessor.",
+            "status": "done",
+            "testStrategy": "Integration test with TestServer hosting minimal API endpoint. Register HttpClient with test base URL. Inject ITelemetryApiClient via DI, call PostReadingAsync, verify request reaches test endpoint with correct BaseAddress and Accept header. Verify HttpClient timeout is 30 seconds. Test DI resolution of ITelemetryApiClient returns TelemetryApiClient instance.",
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:29:16.347Z"
+          },
+          {
+            "id": 4,
+            "title": "Register TelemetryProcessor as hosted service in Program.cs",
+            "description": "Add TelemetryProcessor hosted service registration to Program.cs to enable background MQTT processing and HTTP forwarding",
+            "dependencies": [
+              3
+            ],
+            "details": "In Program.cs after HttpClient registration, add builder.Services.AddHostedService<TelemetryProcessor>(). This registers the existing TelemetryProcessor BackgroundService with the host, ensuring it starts when the application runs. TelemetryProcessor already exists at src/Orchestrator/Services/TelemetryProcessor.cs with MQTT client setup and message handling logic. Registration enables DI of ITelemetryApiClient into constructor.",
+            "status": "done",
+            "testStrategy": "Run orchestrator with 'dotnet run'. Verify TelemetryProcessor logs appear: 'TelemetryProcessor starting', 'MQTT connected to localhost', 'Subscribed to machines/+/telemetry'. Test DI by injecting ITelemetryApiClient into TelemetryProcessor constructor, verify no DI resolution errors. Stop application with Ctrl+C, verify 'TelemetryProcessor stopped' log appears and graceful shutdown occurs.",
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:29:16.350Z"
+          },
+          {
+            "id": 5,
+            "title": "Integrate TelemetryApiClient into TelemetryProcessor HTTP forwarding logic",
+            "description": "Wire ITelemetryApiClient into TelemetryProcessor message handler to replace placeholder comment with actual HTTP forwarding call",
+            "dependencies": [
+              4
+            ],
+            "details": "Update TelemetryProcessor.cs constructor to inject ITelemetryApiClient. At line 75 (placeholder comment '// HTTP forwarding goes here'), replace with: await _apiClient.PostReadingAsync(reading, stoppingToken); Add error handling with try-catch logging HttpRequestException separately. Ensure call happens within existing Activity context (line 58-76) so HttpClient instrumentation auto-links HTTP span to MQTT processing span. Current Activity propagates TraceId to API via OpenTelemetry instrumentation.",
+            "status": "done",
+            "testStrategy": "Full integration test: run Jaeger (port 16686), HiveMQ (port 1883), TelemetryApi (port 5000), MachineSimulator, and Orchestrator. Verify Orchestrator receives MQTT messages (check logs: 'Received reading from machine-X'). Verify API logs show POST requests arriving. Query GET /api/readings, verify data persisted in LiteDB. Open Jaeger UI, search for 'orchestrator' service, verify trace shows: mqtt.process span -> HTTP POST span -> ASP.NET Core span -> litedb.insert span in single distributed trace.",
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T13:29:16.352Z"
+          }
+        ],
+        "updatedAt": "2026-04-16T13:29:16.352Z"
       },
       {
         "id": "16",
@@ -888,8 +977,9 @@
         "dependencies": [
           "15"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-16T13:29:32.414Z"
       },
       {
         "id": "17",
@@ -901,8 +991,9 @@
         "dependencies": [
           "16"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [],
+        "updatedAt": "2026-04-16T13:30:20.486Z"
       },
       {
         "id": "18",
@@ -914,8 +1005,72 @@
         "dependencies": [
           "17"
         ],
-        "status": "pending",
-        "subtasks": []
+        "status": "done",
+        "subtasks": [
+          {
+            "id": 1,
+            "title": "Add missing configuration defaults to TelemetryApi appsettings.json",
+            "description": "Update TelemetryApi/appsettings.json to include LiteDb:ConnectionString and OTEL_EXPORTER_OTLP_ENDPOINT with localhost defaults matching current hardcoded values",
+            "dependencies": [],
+            "details": "Edit src/TelemetryApi/appsettings.json to add 'LiteDb' section with 'ConnectionString': './data/telemetry.db' (matching LiteDbRepository.cs:15 fallback) and add 'OTEL_EXPORTER_OTLP_ENDPOINT': 'http://localhost:4317' at root level (matching Program.cs:8 fallback). This ensures development environment works without environment variables.",
+            "status": "done",
+            "testStrategy": "Run dotnet run in src/TelemetryApi directory without any environment variables set. Verify application starts successfully, LiteDB creates ./data/telemetry.db file, and traces export to localhost:4317. Check logs confirm configuration values loaded from appsettings.json.",
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T14:06:53.075Z"
+          },
+          {
+            "id": 2,
+            "title": "Add missing configuration defaults to Orchestrator appsettings.json",
+            "description": "Update Orchestrator/appsettings.json to include Mqtt:Host, Api:BaseUrl, and OTEL_EXPORTER_OTLP_ENDPOINT with localhost defaults matching current fallback values",
+            "dependencies": [],
+            "details": "Edit src/Orchestrator/appsettings.json to add 'Mqtt' section with 'Host': 'localhost' (matching TelemetryProcessor.cs:27 fallback), add 'Api' section with 'BaseUrl': 'http://localhost:8080' (matching Program.cs:10 fallback), and add 'OTEL_EXPORTER_OTLP_ENDPOINT': 'http://localhost:4317' at root level. This ensures development environment works without environment variables.",
+            "status": "done",
+            "testStrategy": "Run dotnet run in src/Orchestrator directory without environment variables. Verify application attempts MQTT connection to localhost:1883 and configures HttpClient with http://localhost:8080 base address. Check logs show correct configuration values loaded from appsettings.json.",
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T14:06:53.078Z"
+          },
+          {
+            "id": 3,
+            "title": "Create .env.example file documenting all environment variables",
+            "description": "Create .env.example in project root with comprehensive documentation of all available environment variables across all services with descriptions and default values",
+            "dependencies": [
+              1,
+              2
+            ],
+            "details": "Create .env.example in /Users/lucasm/dev/dist-telemetry-exp/ with sections for each service (TelemetryApi, MachineSimulator, Orchestrator, Jaeger, HiveMQ). Document: LiteDb__ConnectionString (default: ./data/telemetry.db), Mqtt__Host (default: localhost), Mqtt__PublishIntervalSeconds (default: 5), Api__BaseUrl (default: http://localhost:8080), OTEL_EXPORTER_OTLP_ENDPOINT (default: http://localhost:4317). Include comments explaining each variable's purpose, format, and when to override (development vs docker-compose vs production).",
+            "status": "done",
+            "testStrategy": "Review .env.example file to verify all environment variables from docker-compose.yml (lines 47-48, 69-71, 87-89) are documented. Confirm descriptions are clear and defaults match appsettings.json values. Verify format follows standard .env syntax with KEY=value pairs and # comments.",
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T14:06:53.081Z"
+          },
+          {
+            "id": 4,
+            "title": "Implement configuration validation and startup logging in TelemetryApi",
+            "description": "Add startup logging in TelemetryApi/Program.cs to display actual configuration values loaded (LiteDb path, OTLP endpoint, Kestrel URLs) with validation that required settings are present",
+            "dependencies": [
+              1
+            ],
+            "details": "In src/TelemetryApi/Program.cs after var app = builder.Build() (line 33), use ILogger to log configuration values: LiteDb:ConnectionString, OTEL_EXPORTER_OTLP_ENDPOINT, and app.Urls. Log at Information level showing 'TelemetryApi starting with: LiteDb={path}, OTLP={endpoint}, URLs={urls}'. Do NOT log any secrets. Add validation that LiteDb:ConnectionString is not null/empty, throw clear exception if missing critical config.",
+            "status": "done",
+            "testStrategy": "Run dotnet run in TelemetryApi directory and verify startup logs display: 'TelemetryApi starting with: LiteDb=./data/telemetry.db, OTLP=http://localhost:4317, URLs=http://localhost:5000'. Override with environment variables (LiteDb__ConnectionString=/tmp/test.db) and verify log shows overridden value. Test validation by removing LiteDb config and verify startup fails with clear error message.",
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T14:06:53.084Z"
+          },
+          {
+            "id": 5,
+            "title": "Implement configuration validation and startup logging in MachineSimulator and Orchestrator",
+            "description": "Add startup logging in MachineSimulator and Orchestrator Program.cs files to display actual configuration values loaded (MQTT host, API URL, OTLP endpoint, publish interval) with validation",
+            "dependencies": [
+              2
+            ],
+            "details": "In src/MachineSimulator/Program.cs after var host = builder.Build(), log 'MachineSimulator starting with: Mqtt:Host={host}, PublishInterval={seconds}s, OTLP={endpoint}'. In src/Orchestrator/Program.cs after var host = builder.Build() (line 34), log 'Orchestrator starting with: Mqtt:Host={host}, Api:BaseUrl={url}, OTLP={endpoint}'. Use ILogger at Information level. Add validation that Mqtt:Host and Api:BaseUrl are not null/empty for Orchestrator, throw clear exception if missing. Do NOT log secrets.",
+            "status": "done",
+            "testStrategy": "Run dotnet run for both MachineSimulator and Orchestrator. Verify startup logs show configuration values loaded from appsettings.json. Override Mqtt__Host environment variable and verify logs show overridden value. Test with docker-compose up and verify logs show container-specific values (Mqtt__Host=hivemq, Api__BaseUrl=http://telemetry-api:8080) matching docker-compose.yml environment blocks.",
+            "parentId": "undefined",
+            "updatedAt": "2026-04-16T14:06:53.086Z"
+          }
+        ],
+        "updatedAt": "2026-04-16T14:06:53.086Z"
       },
       {
         "id": "19",
@@ -1025,9 +1180,9 @@
     ],
     "metadata": {
       "version": "1.0.0",
-      "lastModified": "2026-04-16T13:13:36.606Z",
+      "lastModified": "2026-04-16T14:06:53.086Z",
       "taskCount": 26,
-      "completedCount": 8,
+      "completedCount": 18,
       "tags": [
         "master"
       ]

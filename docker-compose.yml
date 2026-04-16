@@ -78,6 +78,26 @@ services:
     networks:
       - otel-network
 
+  orchestrator:
+    build:
+      context: .
+      dockerfile: src/Orchestrator/Dockerfile
+    container_name: orchestrator
+    environment:
+      - Mqtt__Host=hivemq
+      - Api__BaseUrl=http://telemetry-api:8080
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+    depends_on:
+      jaeger:
+        condition: service_healthy
+      hivemq:
+        condition: service_healthy
+      telemetry-api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - otel-network
+
 networks:
   otel-network:
     driver: bridge

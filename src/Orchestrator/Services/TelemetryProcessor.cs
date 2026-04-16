@@ -4,12 +4,16 @@ using System.Text.Json;
 using MQTTnet;
 using MQTTnet.Formatter;
 using MQTTnet.Protocol;
+using Orchestrator.Clients;
 using Orchestrator.Models;
 using Orchestrator.Telemetry;
 
 namespace Orchestrator.Services;
 
-public class TelemetryProcessor(ILogger<TelemetryProcessor> logger, IConfiguration configuration)
+public class TelemetryProcessor(
+    ILogger<TelemetryProcessor> logger,
+    IConfiguration configuration,
+    ITelemetryApiClient apiClient)
     : BackgroundService
 {
     public static readonly ActivitySource ActivitySource = new("Orchestrator.MQTT", "1.0.0");
@@ -72,7 +76,7 @@ public class TelemetryProcessor(ILogger<TelemetryProcessor> logger, IConfigurati
                         "Received reading from {MachineId}: T={Temperature:F1} P={Pressure:F1} RPM={Rpm:F0}",
                         reading.MachineId, reading.Temperature, reading.Pressure, reading.Rpm);
 
-                    // HTTP forwarding goes here (Task 15)
+                    await apiClient.PostReadingAsync(reading, stoppingToken);
                 }
             }
             catch (Exception ex)

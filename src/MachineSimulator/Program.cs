@@ -22,4 +22,11 @@ builder.Services.AddOpenTelemetry()
 builder.Services.AddHostedService<TelemetryPublisher>();
 
 var host = builder.Build();
+
+var startupLogger = host.Services.GetRequiredService<ILogger<Program>>();
+startupLogger.LogInformation("MachineSimulator starting — Mqtt:Host={MqttHost}, PublishInterval={Interval}s, OTLP={Otlp}",
+    host.Services.GetRequiredService<IConfiguration>()["Mqtt:Host"],
+    host.Services.GetRequiredService<IConfiguration>().GetValue("Mqtt:PublishIntervalSeconds", 5),
+    otlpEndpoint);
+
 host.Run();
