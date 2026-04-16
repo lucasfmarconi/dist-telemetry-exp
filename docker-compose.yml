@@ -60,6 +60,24 @@ services:
     networks:
       - otel-network
 
+  machine-simulator:
+    build:
+      context: .
+      dockerfile: src/MachineSimulator/Dockerfile
+    container_name: machine-simulator
+    environment:
+      - Mqtt__Host=hivemq
+      - Mqtt__PublishIntervalSeconds=5
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+    depends_on:
+      jaeger:
+        condition: service_healthy
+      hivemq:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - otel-network
+
 networks:
   otel-network:
     driver: bridge
