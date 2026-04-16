@@ -1,12 +1,18 @@
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Serilog;
 using TelemetryApi.Data;
 using TelemetryApi.Middleware;
 
 var builder = WebApplication.CreateBuilder(args);
 
-builder.Logging.AddJsonConsole(opts => opts.IncludeScopes = true);
+builder.Host.UseSerilog((ctx, _, lc) => lc
+    .ReadFrom.Configuration(ctx.Configuration)
+    .Enrich.FromLogContext()
+    .Enrich.WithMachineName()
+    .WriteTo.Console()
+    .WriteTo.Seq(ctx.Configuration["Seq:ServerUrl"] ?? "http://localhost:5341"));
 
 var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] ?? "http://jaeger:4317";
 
@@ -34,10 +40,10 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-var startupLogger = app.Services.GetRequiredService<ILogger<Program>>();
-startupLogger.LogInformation("TelemetryApi starting — LiteDb={LiteDb}, OTLP={Otlp}",
+Log.Information("TelemetryApi starting — LiteDb={LiteDb}, OTLP={Otlp}, Seq={Seq}",
     app.Configuration["LiteDb:ConnectionString"],
-    otlpEndpoint);
+    otlpEndpoint,
+    app.Configuration["Seq:ServerUrl"] ?? "http://localhost:5341");
 
 if (app.Environment.IsDevelopment())
 {

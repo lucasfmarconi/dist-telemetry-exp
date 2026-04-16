@@ -3,10 +3,16 @@ using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
 using Orchestrator.Clients;
 using Orchestrator.Services;
+using Serilog;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-builder.Logging.AddJsonConsole(opts => opts.IncludeScopes = true);
+builder.Services.AddSerilog((_, lc) => lc
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .Enrich.WithMachineName()
+    .WriteTo.Console()
+    .WriteTo.Seq(builder.Configuration["Seq:ServerUrl"] ?? "http://localhost:5341"));
 
 var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] ?? "http://jaeger:4317";
 var apiBaseUrl = builder.Configuration["Api:BaseUrl"] ?? "http://api:8080";
@@ -34,10 +40,10 @@ builder.Services.AddHostedService<TelemetryProcessor>();
 
 var host = builder.Build();
 
-var startupLogger = host.Services.GetRequiredService<ILogger<Program>>();
-startupLogger.LogInformation("Orchestrator starting — Mqtt:Host={MqttHost}, Api:BaseUrl={ApiUrl}, OTLP={Otlp}",
+Log.Information("Orchestrator starting — Mqtt:Host={MqttHost}, Api:BaseUrl={ApiUrl}, OTLP={Otlp}, Seq={Seq}",
     builder.Configuration["Mqtt:Host"],
     apiBaseUrl,
-    otlpEndpoint);
+    otlpEndpoint,
+    builder.Configuration["Seq:ServerUrl"] ?? "http://localhost:5341");
 
 host.Run();

@@ -2,10 +2,16 @@ using MachineSimulator.Services;
 using OpenTelemetry.Exporter;
 using OpenTelemetry.Resources;
 using OpenTelemetry.Trace;
+using Serilog;
 
 var builder = Host.CreateApplicationBuilder(args);
 
-builder.Logging.AddJsonConsole(opts => opts.IncludeScopes = true);
+builder.Services.AddSerilog((_, lc) => lc
+    .ReadFrom.Configuration(builder.Configuration)
+    .Enrich.FromLogContext()
+    .Enrich.WithMachineName()
+    .WriteTo.Console()
+    .WriteTo.Seq(builder.Configuration["Seq:ServerUrl"] ?? "http://localhost:5341"));
 
 var otlpEndpoint = builder.Configuration["OTEL_EXPORTER_OTLP_ENDPOINT"] ?? "http://jaeger:4317";
 
@@ -24,10 +30,10 @@ builder.Services.AddHostedService<TelemetryPublisher>();
 
 var host = builder.Build();
 
-var startupLogger = host.Services.GetRequiredService<ILogger<Program>>();
-startupLogger.LogInformation("MachineSimulator starting — Mqtt:Host={MqttHost}, PublishInterval={Interval}s, OTLP={Otlp}",
-    host.Services.GetRequiredService<IConfiguration>()["Mqtt:Host"],
-    host.Services.GetRequiredService<IConfiguration>().GetValue("Mqtt:PublishIntervalSeconds", 5),
-    otlpEndpoint);
+Log.Information("MachineSimulator starting — Mqtt:Host={MqttHost}, PublishInterval={Interval}s, OTLP={Otlp}, Seq={Seq}",
+    builder.Configuration["Mqtt:Host"],
+    builder.Configuration.GetValue("Mqtt:PublishIntervalSeconds", 5),
+    otlpEndpoint,
+    builder.Configuration["Seq:ServerUrl"] ?? "http://localhost:5341");
 
 host.Run();
